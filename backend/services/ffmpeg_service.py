@@ -140,3 +140,50 @@ def export_all_formats(video: str, output_dir: str) -> dict[str, str]:
         export_format(video, out, w, h)
         outputs[name] = out
     return outputs
+
+
+def add_watermark(
+    video: str,
+    output: str,
+    text: str = "Skyie Studio",
+    position: str = "bottom_right",
+    opacity: float = 0.5,
+    font_size: int = 24,
+) -> str:
+    """Burn a semi-transparent text watermark onto a video.
+
+    Args:
+        video: Path to the source video.
+        output: Path for the watermarked output.
+        text: Watermark text to display.
+        position: One of 'bottom_right', 'bottom_left', 'top_right', 'top_left', 'center'.
+        opacity: Text opacity (0.0 to 1.0).
+        font_size: Font size for the watermark text.
+
+    Returns:
+        The output file path.
+    """
+    # Map position names to FFmpeg x:y expressions
+    position_map = {
+        "bottom_right": "x=w-tw-20:y=h-th-20",
+        "bottom_left": "x=20:y=h-th-20",
+        "top_right": "x=w-tw-20:y=20",
+        "top_left": "x=20:y=20",
+        "center": "x=(w-tw)/2:y=(h-th)/2",
+    }
+    pos_expr = position_map.get(position, position_map["bottom_right"])
+
+    font_color = f"white@{opacity}"
+
+    _run_ffmpeg([
+        "-i", video,
+        "-vf", (
+            f"drawtext=text='{text}':"
+            f"fontsize={font_size}:"
+            f"fontcolor={font_color}:"
+            f"{pos_expr}"
+        ),
+        "-c:v", "libx264", "-preset", "fast", "-c:a", "copy",
+        output,
+    ], "add watermark")
+    return output

@@ -75,6 +75,14 @@ async def execute_full_production(job_id: str, params: dict) -> str:
         music_prompt: str — music description
         background_prompt: str — default background for talking segments
     """
+    # GPU health check (non-mock mode only)
+    if not settings.MOCK_MODE:
+        from services.gpu_client import gpu_client
+
+        health = await gpu_client.health_check()
+        if not health.get("healthy"):
+            raise RuntimeError("GPU server is not available")
+
     temp = get_temp_dir(job_id)
     script = params.get("script", "[TALKING] Hello from Skyie Studio!")
     avatar_path = params.get("avatar_path", "")

@@ -33,9 +33,16 @@ class LivePortraitWrapper:
         audio_path: str,
         output_path: str,
     ) -> str:
-        await model_manager.load_model(MODEL_NAME)
-        model_manager.get_model_path(MODEL_NAME)
-        raise NotImplementedError("Real LivePortrait inference requires GPU server")
+        from services.gpu_client import gpu_client
+
+        await gpu_client.infer(
+            endpoint="/infer/lipsync",
+            params={},
+            input_files={"avatar": avatar_path, "audio": audio_path},
+            output_path=output_path,
+            timeout=300,
+        )
+        return output_path
 
 
 live_portrait_wrapper = LivePortraitWrapper()

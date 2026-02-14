@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generateFullProduction } from "@/lib/api";
+import { toast } from "sonner";
 
 const EXAMPLE_SCRIPT = `[TALKING] Welcome to Skyie Studio! Today I'm going to show you how our AI video platform works.
 
@@ -39,7 +40,6 @@ export default function ProductionPage() {
     "Professional studio background"
   );
 
-  // Parse segments for preview
   const segments = script
     .split("\n")
     .filter((l) => l.trim())
@@ -65,8 +65,10 @@ export default function ProductionPage() {
         music_prompt: musicPrompt,
         background_prompt: backgroundPrompt,
       });
-      router.push(`/?job=${result.job_id}`);
+      toast.success("Full production started");
+      router.push(`/jobs/${result.job_id}`);
     } catch {
+      toast.error("Failed to start generation");
       setSubmitting(false);
     }
   }
@@ -108,7 +110,6 @@ export default function ProductionPage() {
               className="resize-none font-mono text-sm"
             />
 
-            {/* Segment Preview */}
             {segments.length > 0 && segments.some((s) => s.type !== "text") && (
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">

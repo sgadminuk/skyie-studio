@@ -28,20 +28,35 @@ class Settings(BaseSettings):
     TEMP_PATH: Path = Path("./temp")
     OUTPUT_PATH: Path = Path("./assets/generated")
 
-    # Cloudflare R2 (Phase 2)
+    # GPU Inference Server
+    GPU_SERVER_URL: str = ""
+    GPU_API_KEY: str = ""
+    GPU_TIMEOUT_SECONDS: int = 600
+    GPU_UPLOAD_TIMEOUT: int = 120
+    GPU_MAX_RETRIES: int = 2
+    HF_API_KEY: str = ""
+
+    # JWT Auth
+    JWT_SECRET_KEY: str = "change-this-in-production-to-random-64-char-string"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Stripe
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_PUBLISHABLE_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+
+    # LLM (Prompt Enhancement)
+    OPENAI_API_KEY: str = ""
+    LLM_MODEL: str = "gpt-4o-mini"
+
+    # Cloudflare R2
     R2_ACCOUNT_ID: str = ""
     R2_ACCESS_KEY_ID: str = ""
     R2_SECRET_ACCESS_KEY: str = ""
     R2_BUCKET_NAME: str = "skyie-studio"
     R2_ENDPOINT: str = ""
-
-    # Auth (Phase 2)
-    SKYIE_AUTH_URL: str = ""
-    SKYIE_AUTH_API_KEY: str = ""
-
-    # Billing (Phase 2)
-    ZYPPOPAY_API_URL: str = ""
-    ZYPPOPAY_API_KEY: str = ""
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

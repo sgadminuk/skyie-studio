@@ -11,9 +11,12 @@ import {
   Mic,
   Film,
   ChevronLeft,
+  FolderOpen,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,6 +25,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/create", label: "Create", icon: Wand2 },
   { href: "/library", label: "Library", icon: Library },
+  { href: "/projects", label: "Projects", icon: FolderOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -29,11 +33,13 @@ const CREATE_ITEMS = [
   { href: "/create/talking-head", label: "Talking Head", icon: Mic },
   { href: "/create/broll", label: "B-Roll", icon: Film },
   { href: "/create/production", label: "Full Production", icon: Video },
+  { href: "/create/storyboard", label: "Storyboard", icon: Film },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { isOpen, toggle } = useSidebar();
+  const { user } = useAuth();
 
   return (
     <aside
@@ -95,6 +101,23 @@ export function Sidebar() {
               </Link>
             );
           })}
+
+          {/* Admin - only visible to admins */}
+          {user?.is_admin && (
+            <Link
+              href="/admin"
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                pathname.startsWith("/admin")
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                !isOpen && "justify-center px-2"
+              )}
+            >
+              <Shield className="h-4 w-4 shrink-0" />
+              {isOpen && <span>Admin</span>}
+            </Link>
+          )}
         </nav>
 
         {/* Create sub-nav */}

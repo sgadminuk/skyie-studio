@@ -29,6 +29,14 @@ async def execute_talking_head(job_id: str, params: dict) -> str:
         generate_background: bool — whether to generate AI background
         background_prompt: str — prompt for background generation
     """
+    # GPU health check (non-mock mode only)
+    if not settings.MOCK_MODE:
+        from services.gpu_client import gpu_client
+
+        health = await gpu_client.health_check()
+        if not health.get("healthy"):
+            raise RuntimeError("GPU server is not available")
+
     temp = get_temp_dir(job_id)
     script = params.get("script", "Hello, welcome to Skyie Studio!")
     avatar_path = params.get("avatar_path", "")

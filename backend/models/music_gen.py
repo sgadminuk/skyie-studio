@@ -33,9 +33,15 @@ class MusicGenWrapper:
         output_path: str,
         duration: float,
     ) -> str:
-        await model_manager.load_model(MODEL_NAME)
-        model_manager.get_model_path(MODEL_NAME)
-        raise NotImplementedError("Real MusicGen inference requires GPU server")
+        from services.gpu_client import gpu_client
+
+        await gpu_client.infer(
+            endpoint="/infer/music",
+            params={"prompt": prompt, "duration": duration},
+            output_path=output_path,
+            timeout=120,
+        )
+        return output_path
 
 
 music_gen_wrapper = MusicGenWrapper()

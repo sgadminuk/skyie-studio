@@ -13,6 +13,8 @@ Redis is used ONLY for:
   - Short-lived job state cache (for WebSocket streaming performance)
 """
 
+from __future__ import annotations
+
 import json
 import time
 import uuid

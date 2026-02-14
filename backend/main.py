@@ -68,9 +68,21 @@ from api.routes_generate import router as generate_router
 from api.routes_jobs import router as jobs_router
 from api.routes_assets import router as assets_router
 from api.routes_export import router as export_router
+from api.routes_auth import router as auth_router
+from api.routes_billing import router as billing_router
+from api.routes_enhance import router as enhance_router
+from api.routes_projects import router as projects_router
+from api.routes_admin import router as admin_router
+from api.routes_api_keys import router as api_keys_router
 
 app.include_router(health_router)
+app.include_router(auth_router)
 app.include_router(generate_router)
 app.include_router(jobs_router)
 app.include_router(assets_router)
 app.include_router(export_router)
+app.include_router(billing_router)
+app.include_router(enhance_router)
+app.include_router(projects_router)
+app.include_router(admin_router)
+app.include_router(api_keys_router)

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Mic, Loader2, Upload } from "lucide-react";
+import { Mic, Loader2, Upload, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { generateTalkingHead } from "@/lib/api";
+import { generateTalkingHead, uploadAvatar } from "@/lib/api";
+import { toast } from "sonner";
 
 export default function TalkingHeadPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [script, setScript] = useState("");
   const [voiceEngine, setVoiceEngine] = useState("fish_speech");
@@ -27,8 +29,45 @@ export default function TalkingHeadPage() {
   const [backgroundPrompt, setBackgroundPrompt] = useState(
     "Professional studio background, soft lighting"
   );
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarPath, setAvatarPath] = useState<string | undefined>();
 
   const charCount = script.length;
+
+  function handleAvatarSelect(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file (PNG, JPG)");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image must be under 10MB");
+      return;
+    }
+    setAvatarPreview(URL.createObjectURL(file));
+    setUploadingAvatar(true);
+    uploadAvatar(file)
+      .then((data) => {
+        setAvatarPath(data.path || data.filename);
+        toast.success("Avatar uploaded");
+      })
+      .catch(() => {
+        toast.error("Failed to upload avatar");
+        setAvatarPreview(null);
+      })
+      .finally(() => setUploadingAvatar(false));
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleAvatarSelect(file);
+  }
+
+  function clearAvatar() {
+    setAvatarPreview(null);
+    setAvatarPath(undefined);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,13 +77,16 @@ export default function TalkingHeadPage() {
     try {
       const result = await generateTalkingHead({
         script,
+        avatar_path: avatarPath,
         voice_engine: voiceEngine,
         language,
         generate_background: generateBackground,
         background_prompt: backgroundPrompt,
       });
-      router.push(`/?job=${result.job_id}`);
+      toast.success("Generation started");
+      router.push(`/jobs/${result.job_id}`);
     } catch {
+      toast.error("Failed to start generation");
       setSubmitting(false);
     }
   }
@@ -87,17 +129,56 @@ export default function TalkingHeadPage() {
             <CardTitle className="text-base">Avatar</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-center rounded-lg border-2 border-dashed p-8">
-              <div className="text-center">
-                <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Drag & drop an avatar photo, or click to browse
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  PNG, JPG up to 10MB. Leave empty for default.
-                </p>
+            {avatarPreview ? (
+              <div className="relative inline-block">
+                <img
+                  src={avatarPreview}
+                  alt="Avatar preview"
+                  className="h-32 w-32 rounded-lg object-cover"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-2 -right-2 h-6 w-6"
+                  onClick={clearAvatar}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+                {uploadingAvatar && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50">
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <div
+                className="flex items-center justify-center rounded-lg border-2 border-dashed p-8 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+                onDrop={handleDrop}
+                onDragOver={(e) => e.preventDefault()}
+              >
+                <div className="text-center">
+                  <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Drag & drop an avatar photo, or click to browse
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    PNG, JPG up to 10MB. Leave empty for default.
+                  </p>
+                </div>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleAvatarSelect(file);
+              }}
+            />
           </CardContent>
         </Card>
 
@@ -176,7 +257,7 @@ export default function TalkingHeadPage() {
           type="submit"
           size="lg"
           className="w-full"
-          disabled={!script.trim() || submitting}
+          disabled={!script.trim() || submitting || uploadingAvatar}
         >
           {submitting ? (
             <>

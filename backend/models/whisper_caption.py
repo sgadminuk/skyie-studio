@@ -1,5 +1,7 @@
 """Whisper Large-v3 — speech-to-text / auto-captioning."""
 
+from __future__ import annotations
+
 import logging
 from config import settings
 from models.model_manager import model_manager
@@ -36,9 +38,19 @@ class WhisperWrapper:
         output_srt: str,
         language: str | None,
     ) -> str:
-        await model_manager.load_model(MODEL_NAME)
-        model_manager.get_model_path(MODEL_NAME)
-        raise NotImplementedError("Real Whisper inference requires GPU server")
+        from services.gpu_client import gpu_client
+
+        params = {}
+        if language:
+            params["language"] = language
+        await gpu_client.infer(
+            endpoint="/infer/transcribe",
+            params=params,
+            input_files={"audio": audio_path},
+            output_path=output_srt,
+            timeout=120,
+        )
+        return output_srt
 
 
 whisper_wrapper = WhisperWrapper()

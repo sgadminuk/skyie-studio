@@ -1,5 +1,7 @@
 """VRAM-aware model manager. Only ONE heavy model in VRAM at a time."""
 
+from __future__ import annotations
+
 import gc
 import logging
 from dataclasses import dataclass, field
@@ -68,6 +70,14 @@ class ModelManager:
             logger.info(f"[MOCK] Loading {model_name} ({info.vram_gb}GB VRAM)")
             self._loaded[model_name] = f"mock_{model_name}"
             self._loaded_vram += info.vram_gb
+            return self._loaded[model_name]
+
+        # If GPU_SERVER_URL is configured, skip local model loading
+        if settings.GPU_SERVER_URL:
+            logger.info(
+                f"Remote GPU configured — skipping local load for {model_name}"
+            )
+            self._loaded[model_name] = f"remote_{model_name}"
             return self._loaded[model_name]
 
         # Check if we need to free VRAM

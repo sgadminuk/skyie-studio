@@ -26,6 +26,14 @@ async def execute_broll(job_id: str, params: dict) -> str:
         width: int — output width
         height: int — output height
     """
+    # GPU health check (non-mock mode only)
+    if not settings.MOCK_MODE:
+        from services.gpu_client import gpu_client
+
+        health = await gpu_client.health_check()
+        if not health.get("healthy"):
+            raise RuntimeError("GPU server is not available")
+
     temp = get_temp_dir(job_id)
     scenes = params.get("scenes", [{"prompt": "Beautiful landscape with mountains", "duration": 5}])
     style = params.get("style", "cinematic, professional")

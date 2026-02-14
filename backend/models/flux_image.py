@@ -39,9 +39,20 @@ class FluxImageWrapper:
         height: int,
         steps: int,
     ) -> str:
-        await model_manager.load_model(MODEL_NAME)
-        model_manager.get_model_path(MODEL_NAME)
-        raise NotImplementedError("Real FLUX inference requires GPU server")
+        import httpx
+        from pathlib import Path
+
+        if not settings.HF_API_KEY:
+            raise RuntimeError("HF_API_KEY not configured")
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
+                headers={"Authorization": f"Bearer {settings.HF_API_KEY}"},
+                json={"inputs": prompt, "parameters": {"width": width, "height": height}},
+            )
+            response.raise_for_status()
+            Path(output_path).write_bytes(response.content)
+        return output_path
 
 
 flux_image_wrapper = FluxImageWrapper()

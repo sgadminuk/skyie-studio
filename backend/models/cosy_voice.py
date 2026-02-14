@@ -36,9 +36,19 @@ class CosyVoiceWrapper:
         speaker: str,
         language: str,
     ) -> str:
-        await model_manager.load_model(MODEL_NAME)
-        model_manager.get_model_path(MODEL_NAME)
-        raise NotImplementedError("Real CosyVoice inference requires GPU server")
+        from services.gpu_client import gpu_client
+
+        input_files = {}
+        if speaker and speaker != "default":
+            input_files["voice_reference"] = speaker
+        await gpu_client.infer(
+            endpoint="/infer/tts",
+            params={"text": text, "language": language, "engine": "cosy_voice"},
+            input_files=input_files or None,
+            output_path=output_path,
+            timeout=120,
+        )
+        return output_path
 
 
 cosy_voice_wrapper = CosyVoiceWrapper()

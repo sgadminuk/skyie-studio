@@ -23,8 +23,15 @@ class WanVideoWrapper:
             generate_test_video(output_path, duration, width, height)
             return output_path
 
-        await model_manager.load_model("wan_t2v")
-        raise NotImplementedError("Real Wan T2V inference requires GPU server")
+        from services.gpu_client import gpu_client
+
+        await gpu_client.infer(
+            endpoint="/infer/t2v",
+            params={"prompt": prompt, "duration": duration, "width": width, "height": height},
+            output_path=output_path,
+            timeout=300,
+        )
+        return output_path
 
     async def image_to_video(
         self,
@@ -39,8 +46,16 @@ class WanVideoWrapper:
             generate_test_video(output_path, duration)
             return output_path
 
-        await model_manager.load_model("wan_i2v")
-        raise NotImplementedError("Real Wan I2V inference requires GPU server")
+        from services.gpu_client import gpu_client
+
+        await gpu_client.infer(
+            endpoint="/infer/i2v",
+            params={"prompt": prompt, "duration": duration},
+            input_files={"image": image_path},
+            output_path=output_path,
+            timeout=300,
+        )
+        return output_path
 
     async def text_image_to_video(
         self,
@@ -55,8 +70,16 @@ class WanVideoWrapper:
             generate_test_video(output_path, duration)
             return output_path
 
-        await model_manager.load_model("wan_ti2v")
-        raise NotImplementedError("Real Wan TI2V inference requires GPU server")
+        from services.gpu_client import gpu_client
+
+        await gpu_client.infer(
+            endpoint="/infer/ti2v",
+            params={"text": text, "duration": duration},
+            input_files={"image": image_path},
+            output_path=output_path,
+            timeout=300,
+        )
+        return output_path
 
     async def animate_character(
         self,
@@ -71,8 +94,16 @@ class WanVideoWrapper:
             generate_test_video(output_path, duration)
             return output_path
 
-        await model_manager.load_model("wan_animate")
-        raise NotImplementedError("Real Wan Animate inference requires GPU server")
+        from services.gpu_client import gpu_client
+
+        await gpu_client.infer(
+            endpoint="/infer/animate",
+            params={"motion_prompt": motion_prompt, "duration": duration},
+            input_files={"character": character_image},
+            output_path=output_path,
+            timeout=300,
+        )
+        return output_path
 
     async def audio_to_video(
         self,
@@ -87,8 +118,16 @@ class WanVideoWrapper:
             generate_test_video(output_path, duration)
             return output_path
 
-        await model_manager.load_model("wan_s2v")
-        raise NotImplementedError("Real Wan S2V inference requires GPU server")
+        from services.gpu_client import gpu_client
+
+        await gpu_client.infer(
+            endpoint="/infer/s2v",
+            params={"prompt": prompt, "duration": duration},
+            input_files={"audio": audio_path},
+            output_path=output_path,
+            timeout=300,
+        )
+        return output_path
 
 
 wan_video_wrapper = WanVideoWrapper()

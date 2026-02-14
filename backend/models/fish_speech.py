@@ -1,5 +1,7 @@
 """Fish Speech — zero-shot voice cloning TTS. Script → audio WAV."""
 
+from __future__ import annotations
+
 import logging
 from config import settings
 from models.model_manager import model_manager
@@ -36,12 +38,19 @@ class FishSpeechWrapper:
         voice_reference: str | None,
         language: str,
     ) -> str:
-        await model_manager.load_model(MODEL_NAME)
-        model_manager.get_model_path(MODEL_NAME)
+        from services.gpu_client import gpu_client
 
-        # Real Fish Speech inference — to be implemented on GPU server
-        # from fish_speech import ...
-        raise NotImplementedError("Real Fish Speech inference requires GPU server")
+        input_files = {}
+        if voice_reference:
+            input_files["voice_reference"] = voice_reference
+        await gpu_client.infer(
+            endpoint="/infer/tts",
+            params={"text": text, "language": language, "engine": "fish_speech"},
+            input_files=input_files or None,
+            output_path=output_path,
+            timeout=120,
+        )
+        return output_path
 
 
 fish_speech_wrapper = FishSpeechWrapper()

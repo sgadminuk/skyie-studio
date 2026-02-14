@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generateBroll } from "@/lib/api";
+import { toast } from "sonner";
 
 interface Scene {
   prompt: string;
@@ -67,8 +68,10 @@ export default function BrollPage() {
         width,
         height,
       });
-      router.push(`/?job=${result.job_id}`);
+      toast.success("B-Roll generation started");
+      router.push(`/jobs/${result.job_id}`);
     } catch {
+      toast.error("Failed to start generation");
       setSubmitting(false);
     }
   }

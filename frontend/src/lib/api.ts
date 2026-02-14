@@ -8,6 +8,30 @@ const api = axios.create({
   timeout: 30000,
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401 && !error.config._retry) {
+      error.config._retry = true;
+      const refreshToken = localStorage.getItem("skyie_refresh_token");
+      if (refreshToken) {
+        try {
+          const { data } = await api.post("/auth/refresh", { refresh_token: refreshToken });
+          localStorage.setItem("skyie_access_token", data.access_token);
+          api.defaults.headers.common["Authorization"] = `Bearer ${data.access_token}`;
+          error.config.headers["Authorization"] = `Bearer ${data.access_token}`;
+          return api(error.config);
+        } catch {
+          localStorage.removeItem("skyie_access_token");
+          localStorage.removeItem("skyie_refresh_token");
+          if (typeof window !== "undefined") window.location.href = "/login";
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // ── Health ───────────────────────────────────────────────────────────────────
 
 export async function getHealth() {
@@ -153,6 +177,46 @@ export async function exportVideo(jobId: string, formats: string[]) {
 export function createJobWebSocket(jobId: string): WebSocket {
   const wsUrl = API_URL.replace(/^http/, "ws");
   return new WebSocket(`${wsUrl}/api/v1/jobs/${jobId}/ws`);
+}
+
+// ── Enhance ─────────────────────────────────────────────────────────────────
+
+export async function enhancePrompt(prompt: string, type: string = "video") {
+  const { data } = await api.post("/enhance", { prompt, type });
+  return data;
+}
+
+// ── Projects ────────────────────────────────────────────────────────────────
+
+export async function getProjects() {
+  const { data } = await api.get("/projects");
+  return data;
+}
+export async function createProject(project: { name: string; workflow: string; params: Record<string, unknown> }) {
+  const { data } = await api.post("/projects", project);
+  return data;
+}
+export async function deleteProject(id: string) {
+  await api.delete(`/projects/${id}`);
+}
+
+// ── Billing ─────────────────────────────────────────────────────────────────
+
+export async function getCreditCosts() {
+  const { data } = await api.get("/billing/credit-costs");
+  return data;
+}
+export async function getPackages() {
+  const { data } = await api.get("/billing/packages");
+  return data;
+}
+export async function purchaseCredits(packageId: string) {
+  const { data } = await api.post("/billing/purchase", { package_id: packageId });
+  return data;
+}
+export async function getCreditHistory() {
+  const { data } = await api.get("/billing/history");
+  return data;
 }
 
 export default api;
