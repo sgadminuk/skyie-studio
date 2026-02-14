@@ -64,9 +64,11 @@ async def upload_voice_reference(file: UploadFile = File(...)):
 
 
 @router.post("/voices/preview")
-async def preview_voice(voice_id: str = "default_female", text: str = "Hello, this is a voice preview from Skyie Studio."):
+async def preview_voice(
+    voice_id: str = "default_female",
+    text: str = "Hello, this is a voice preview from Skyie Studio.",
+):
     """Generate a 5-second voice preview."""
-    from config import settings
     from services.storage_service import get_temp_dir
     import uuid
 
@@ -105,7 +107,6 @@ async def delete_video(job_id: str):
     """Delete a generated video and its files."""
     from config import settings
     import shutil
-    from pathlib import Path
 
     output_dir = settings.OUTPUT_PATH / job_id
     if output_dir.exists():

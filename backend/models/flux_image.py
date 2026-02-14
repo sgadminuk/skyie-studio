@@ -1,7 +1,6 @@
 """FLUX.1 Schnell — fast image generation (1-4 step)."""
 
 import logging
-from pathlib import Path
 from PIL import Image
 from config import settings
 from models.model_manager import model_manager
@@ -41,7 +40,7 @@ class FluxImageWrapper:
         steps: int,
     ) -> str:
         await model_manager.load_model(MODEL_NAME)
-        model_path = model_manager.get_model_path(MODEL_NAME)
+        model_manager.get_model_path(MODEL_NAME)
         raise NotImplementedError("Real FLUX inference requires GPU server")
 
 

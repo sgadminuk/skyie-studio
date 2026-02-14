@@ -5,15 +5,11 @@ Full script with scene descriptions → talking head + b-roll → final composit
 import asyncio
 import logging
 import re
-from pathlib import Path
 from config import settings
 from services.job_queue import update_job
 from services.storage_service import get_temp_dir, save_output, cleanup_temp
 from services.ffmpeg_service import stitch_clips, add_audio, generate_test_video
-from services.caption_service import generate_captions
 from models.music_gen import music_gen_wrapper
-from workflows.talking_head import execute_talking_head
-from workflows.ai_broll import execute_broll
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +83,7 @@ async def execute_full_production(job_id: str, params: dict) -> str:
     language = params.get("language", "en")
     generate_music = params.get("generate_music", True)
     music_prompt = params.get("music_prompt", "Professional background music")
-    background_prompt = params.get("background_prompt", "Professional studio background")
+    params.get("background_prompt", "Professional studio background")
 
     try:
         # Step 1: Parse script (5%)

@@ -4,7 +4,6 @@ Script + avatar photo + voice → professional talking head video with captions.
 
 import asyncio
 import logging
-from pathlib import Path
 from config import settings
 from services.job_queue import update_job
 from services.storage_service import get_temp_dir, save_output, cleanup_temp
@@ -14,7 +13,6 @@ from models.fish_speech import fish_speech_wrapper
 from models.cosy_voice import cosy_voice_wrapper
 from models.live_portrait import live_portrait_wrapper
 from models.flux_image import flux_image_wrapper
-from models.whisper_caption import whisper_wrapper
 
 logger = logging.getLogger(__name__)
 

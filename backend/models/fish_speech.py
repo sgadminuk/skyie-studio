@@ -1,8 +1,6 @@
 """Fish Speech — zero-shot voice cloning TTS. Script → audio WAV."""
 
-import asyncio
 import logging
-from pathlib import Path
 from config import settings
 from models.model_manager import model_manager
 from services.ffmpeg_service import generate_silent_audio
@@ -39,7 +37,7 @@ class FishSpeechWrapper:
         language: str,
     ) -> str:
         await model_manager.load_model(MODEL_NAME)
-        model_path = model_manager.get_model_path(MODEL_NAME)
+        model_manager.get_model_path(MODEL_NAME)
 
         # Real Fish Speech inference — to be implemented on GPU server
         # from fish_speech import ...

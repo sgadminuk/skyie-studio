@@ -34,7 +34,7 @@ class MusicGenWrapper:
         duration: float,
     ) -> str:
         await model_manager.load_model(MODEL_NAME)
-        model_path = model_manager.get_model_path(MODEL_NAME)
+        model_manager.get_model_path(MODEL_NAME)
         raise NotImplementedError("Real MusicGen inference requires GPU server")
 
 

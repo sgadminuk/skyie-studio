@@ -1,6 +1,6 @@
 """Generation endpoints — create video generation jobs."""
 
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter
 from pydantic import BaseModel
 from services.job_queue import create_job, run_talking_head_task, run_broll_task, run_full_production_task
 

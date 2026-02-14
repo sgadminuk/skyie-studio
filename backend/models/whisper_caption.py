@@ -1,7 +1,6 @@
 """Whisper Large-v3 — speech-to-text / auto-captioning."""
 
 import logging
-from pathlib import Path
 from config import settings
 from models.model_manager import model_manager
 from services.caption_service import generate_mock_srt
@@ -38,7 +37,7 @@ class WhisperWrapper:
         language: str | None,
     ) -> str:
         await model_manager.load_model(MODEL_NAME)
-        model_path = model_manager.get_model_path(MODEL_NAME)
+        model_manager.get_model_path(MODEL_NAME)
         raise NotImplementedError("Real Whisper inference requires GPU server")
 
 

@@ -4,11 +4,10 @@ Text prompts → generated images → animated video clips → stitched b-roll.
 
 import asyncio
 import logging
-from pathlib import Path
 from config import settings
 from services.job_queue import update_job
 from services.storage_service import get_temp_dir, save_output, cleanup_temp
-from services.ffmpeg_service import stitch_clips, add_audio, generate_test_video
+from services.ffmpeg_service import stitch_clips, add_audio
 from models.flux_image import flux_image_wrapper
 from models.wan_video import wan_video_wrapper
 from models.music_gen import music_gen_wrapper

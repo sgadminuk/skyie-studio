@@ -3,7 +3,6 @@
 import subprocess
 import logging
 from pathlib import Path
-from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +23,10 @@ def generate_test_video(output: str, duration: float = 3.0, width: int = 1080, h
         "-f", "lavfi", "-i", f"color=c=0x1a1a2e:s={width}x{height}:d={duration}",
         "-f", "lavfi", "-i", f"sine=frequency=440:duration={duration}",
         "-vf", (
-            f"drawtext=text='SKYIE STUDIO':fontsize=48:fontcolor=white:"
-            f"x=(w-text_w)/2:y=(h-text_h)/2-40,"
-            f"drawtext=text='Mock Output':fontsize=32:fontcolor=gray:"
-            f"x=(w-text_w)/2:y=(h-text_h)/2+40"
+            "drawtext=text='SKYIE STUDIO':fontsize=48:fontcolor=white:"
+            "x=(w-text_w)/2:y=(h-text_h)/2-40,"
+            "drawtext=text='Mock Output':fontsize=32:fontcolor=gray:"
+            "x=(w-text_w)/2:y=(h-text_h)/2+40"
         ),
         "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac",
         "-shortest", output,
@@ -38,7 +37,7 @@ def generate_test_video(output: str, duration: float = 3.0, width: int = 1080, h
 def generate_silent_audio(output: str, duration: float = 5.0):
     """Generate a silent audio file."""
     _run_ffmpeg([
-        "-f", "lavfi", "-i", f"anullsrc=r=44100:cl=mono",
+        "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
         "-t", str(duration), "-c:a", "aac", output,
     ], "silent audio")
     return output
@@ -103,7 +102,10 @@ def burn_captions(video: str, srt_file: str, output: str):
     """Burn subtitles onto video."""
     _run_ffmpeg([
         "-i", video,
-        "-vf", f"subtitles={srt_file}:force_style='FontSize=24,PrimaryColour=&Hffffff&,OutlineColour=&H000000&,Outline=2'",
+        "-vf", (
+            f"subtitles={srt_file}:force_style="
+            "'FontSize=24,PrimaryColour=&Hffffff&,OutlineColour=&H000000&,Outline=2'"
+        ),
         "-c:v", "libx264", "-preset", "fast", "-c:a", "copy",
         output,
     ], "burn captions")
@@ -114,7 +116,10 @@ def export_format(video: str, output: str, width: int, height: int):
     """Export video to a specific aspect ratio with padding."""
     _run_ffmpeg([
         "-i", video,
-        "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black",
+        "-vf", (
+            f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black"
+        ),
         "-c:v", "libx264", "-preset", "fast", "-c:a", "copy",
         output,
     ], f"export {width}x{height}")
