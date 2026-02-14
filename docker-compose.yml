@@ -1,0 +1,204 @@
+# =============================================================================
+# Skyie Studio — Production Docker Compose
+# Domain: studio.skyie.tech (frontend) + studio-api.skyie.tech (backend API)
+# =============================================================================
+
+services:
+  # ─── PostgreSQL 16 ─────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: skyie-studio-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-skyie_studio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-skyie_studio}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - skyie-studio-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-skyie_studio} -d ${POSTGRES_DB:-skyie_studio}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+  # ─── Redis 7 (Celery broker + pub/sub) ─────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: skyie-studio-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - skyie-studio-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  # ─── Backend API (FastAPI) ─────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: skyie-studio-backend
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      MOCK_MODE: "true"
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-skyie_studio}:${POSTGRES_PASSWORD}@skyie-studio-postgres:5432/${POSTGRES_DB:-skyie_studio}"
+      DATABASE_URL_SYNC: "postgresql://${POSTGRES_USER:-skyie_studio}:${POSTGRES_PASSWORD}@skyie-studio-postgres:5432/${POSTGRES_DB:-skyie_studio}"
+      REDIS_URL: "redis://skyie-studio-redis:6379/0"
+      CELERY_BROKER_URL: "redis://skyie-studio-redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://skyie-studio-redis:6379/1"
+      ASSETS_PATH: /app/assets
+      TEMP_PATH: /app/temp
+      OUTPUT_PATH: /app/assets/generated
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - assets_data:/app/assets
+      - temp_data:/app/temp
+    networks:
+      - skyie-studio-internal
+      - SkyieProxy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "1.0"
+          memory: 512M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=SkyieProxy"
+      # HTTPS Router
+      - "traefik.http.routers.skyie-studio-api.rule=Host(`studio-api.skyie.tech`)"
+      - "traefik.http.routers.skyie-studio-api.entrypoints=websecure"
+      - "traefik.http.routers.skyie-studio-api.tls=true"
+      - "traefik.http.routers.skyie-studio-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.skyie-studio-api.loadbalancer.server.port=8000"
+
+  # ─── Celery Worker ─────────────────────────────────────────────────────────
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: skyie-studio-worker
+    restart: unless-stopped
+    command: celery -A services.job_queue:celery_app worker --loglevel=info --concurrency=1
+    environment:
+      PYTHONPATH: /app
+      ENVIRONMENT: production
+      MOCK_MODE: "true"
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-skyie_studio}:${POSTGRES_PASSWORD}@skyie-studio-postgres:5432/${POSTGRES_DB:-skyie_studio}"
+      DATABASE_URL_SYNC: "postgresql://${POSTGRES_USER:-skyie_studio}:${POSTGRES_PASSWORD}@skyie-studio-postgres:5432/${POSTGRES_DB:-skyie_studio}"
+      REDIS_URL: "redis://skyie-studio-redis:6379/0"
+      CELERY_BROKER_URL: "redis://skyie-studio-redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://skyie-studio-redis:6379/1"
+      ASSETS_PATH: /app/assets
+      TEMP_PATH: /app/temp
+      OUTPUT_PATH: /app/assets/generated
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - assets_data:/app/assets
+      - temp_data:/app/temp
+    networks:
+      - skyie-studio-internal
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  # ─── Frontend (Next.js) ────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: "https://studio-api.skyie.tech"
+    container_name: skyie-studio-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - SkyieProxy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>{if(r.ok)process.exit(0);process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=SkyieProxy"
+      # HTTPS Router
+      - "traefik.http.routers.skyie-studio.rule=Host(`studio.skyie.tech`)"
+      - "traefik.http.routers.skyie-studio.entrypoints=websecure"
+      - "traefik.http.routers.skyie-studio.tls=true"
+      - "traefik.http.routers.skyie-studio.tls.certresolver=letsencrypt"
+      - "traefik.http.services.skyie-studio.loadbalancer.server.port=3000"
+
+networks:
+  skyie-studio-internal:
+    driver: bridge
+  SkyieProxy:
+    external: true
+
+volumes:
+  postgres_data:
+  redis_data:
+  assets_data:
+  temp_data:
