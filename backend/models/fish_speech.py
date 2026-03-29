@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from config import settings
-from models.model_manager import model_manager
 from services.ffmpeg_service import generate_silent_audio
 
 logger = logging.getLogger(__name__)

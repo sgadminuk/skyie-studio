@@ -3,7 +3,6 @@
 import logging
 from PIL import Image
 from config import settings
-from models.model_manager import model_manager
 
 logger = logging.getLogger(__name__)
 

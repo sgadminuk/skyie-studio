@@ -2,7 +2,6 @@
 
 import logging
 from config import settings
-from models.model_manager import model_manager
 from services.ffmpeg_service import generate_test_video
 
 logger = logging.getLogger(__name__)
