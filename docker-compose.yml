@@ -1,6 +1,6 @@
 # =============================================================================
 # Skyie Studio — Production Docker Compose
-# Domain: studio.skyie.tech (frontend) + studio-api.skyie.tech (backend API)
+# Domain: studio.skyieglobal.tech (frontend) + studio-api.skyieglobal.tech (backend API)
 # =============================================================================
 
 services:
@@ -74,6 +74,9 @@ services:
       ASSETS_PATH: /app/assets
       TEMP_PATH: /app/temp
       OUTPUT_PATH: /app/assets/generated
+      GPU_REGISTRATION_KEY: ${GPU_REGISTRATION_KEY:-}
+      GPU_API_KEY: ${GPU_API_KEY:-}
+      GPU_HEARTBEAT_TIMEOUT: "120"
     depends_on:
       postgres:
         condition: service_healthy
@@ -103,7 +106,7 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=SkyieProxy"
       # HTTPS Router
-      - "traefik.http.routers.skyie-studio-api.rule=Host(`studio-api.skyie.tech`)"
+      - "traefik.http.routers.skyie-studio-api.rule=Host(`studio-api.skyieglobal.tech`)"
       - "traefik.http.routers.skyie-studio-api.entrypoints=websecure"
       - "traefik.http.routers.skyie-studio-api.tls=true"
       - "traefik.http.routers.skyie-studio-api.tls.certresolver=letsencrypt"
@@ -156,7 +159,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: "https://studio-api.skyie.tech"
+        NEXT_PUBLIC_API_URL: "https://studio-api.skyieglobal.tech"
     container_name: skyie-studio-frontend
     restart: unless-stopped
     environment:
@@ -185,7 +188,7 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=SkyieProxy"
       # HTTPS Router
-      - "traefik.http.routers.skyie-studio.rule=Host(`studio.skyie.tech`)"
+      - "traefik.http.routers.skyie-studio.rule=Host(`studio.skyieglobal.tech`)"
       - "traefik.http.routers.skyie-studio.entrypoints=websecure"
       - "traefik.http.routers.skyie-studio.tls=true"
       - "traefik.http.routers.skyie-studio.tls.certresolver=letsencrypt"

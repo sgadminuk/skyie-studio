@@ -39,6 +39,32 @@ export async function getHealth() {
   return data;
 }
 
+// ── GPU Status ─────────────────────────────────────────────────────────────
+
+export interface GpuStatus {
+  online: boolean;
+  gpu_url?: string;
+  pod_id?: string;
+  last_seen?: string;
+  age_seconds?: number;
+  reason?: string;
+  health?: {
+    status: string;
+    uptime_seconds: number;
+    models: {
+      vram_limit_gb: number;
+      vram_used_gb: number;
+      vram_free_gb: number;
+      loaded_models: Array<{ key: string; name: string; vram_gb: number }>;
+    };
+  };
+}
+
+export async function getGpuStatus(): Promise<GpuStatus> {
+  const { data } = await api.get<GpuStatus>("/gpu-status");
+  return data;
+}
+
 // ── Generation ──────────────────────────────────────────────────────────────
 
 export interface TalkingHeadParams {

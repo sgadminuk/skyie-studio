@@ -32,6 +32,9 @@ class GPUClient:
     """
     Async HTTP client for the remote GPU inference server.
 
+    The GPU URL is resolved dynamically: Redis (set by GPU self-registration)
+    takes priority over the static GPU_SERVER_URL config.
+
     Usage::
 
         client = GPUClient()
@@ -49,23 +52,31 @@ class GPUClient:
         timeout: int | None = None,
         upload_timeout: int | None = None,
     ):
-        self.base_url = (base_url or settings.GPU_SERVER_URL).rstrip("/")
+        self._static_base_url = (base_url or settings.GPU_SERVER_URL).rstrip("/")
         self.api_key = api_key or settings.GPU_API_KEY
         self.timeout = timeout or settings.GPU_TIMEOUT_SECONDS
         self.upload_timeout = upload_timeout or settings.GPU_UPLOAD_TIMEOUT
-
-        if not self.base_url:
-            logger.warning("GPU_SERVER_URL is not configured — GPU calls will fail")
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
+    def _get_base_url(self) -> str:
+        """Resolve GPU URL: Redis (dynamic registration) > config (static)."""
+        from services.job_queue import redis_client
+
+        dynamic_url = redis_client.get("skyie:gpu:url")
+        if dynamic_url:
+            return dynamic_url.rstrip("/")
+        if self._static_base_url:
+            return self._static_base_url
+        raise GPUClientError("GPU server URL not configured and no GPU has registered")
+
     def _headers(self) -> dict[str, str]:
         return {"X-API-Key": self.api_key}
 
     def _url(self, path: str) -> str:
-        return f"{self.base_url}{path}"
+        return f"{self._get_base_url()}{path}"
 
     @staticmethod
     def _check_response(resp: httpx.Response) -> dict:

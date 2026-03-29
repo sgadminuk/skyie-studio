@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     GPU_TIMEOUT_SECONDS: int = 600
     GPU_UPLOAD_TIMEOUT: int = 120
     GPU_MAX_RETRIES: int = 2
+    GPU_REGISTRATION_KEY: str = ""
+    GPU_HEARTBEAT_TIMEOUT: int = 120
     HF_API_KEY: str = ""
 
     # JWT Auth

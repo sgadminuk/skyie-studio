@@ -74,6 +74,7 @@ from api.routes_enhance import router as enhance_router
 from api.routes_projects import router as projects_router
 from api.routes_admin import router as admin_router
 from api.routes_api_keys import router as api_keys_router
+from api.routes_gpu import router_internal as gpu_internal_router, router_public as gpu_status_router
 
 app.include_router(health_router)
 app.include_router(auth_router)
@@ -86,3 +87,5 @@ app.include_router(enhance_router)
 app.include_router(projects_router)
 app.include_router(admin_router)
 app.include_router(api_keys_router)
+app.include_router(gpu_internal_router)
+app.include_router(gpu_status_router)

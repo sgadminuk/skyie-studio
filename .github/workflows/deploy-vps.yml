@@ -57,7 +57,7 @@ jobs:
           npm ci
           npm run build
         env:
-          NEXT_PUBLIC_API_URL: https://studio-api.skyie.tech
+          NEXT_PUBLIC_API_URL: https://studio-api.skyieglobal.tech
 
   # ---------------------------------------------------
   # Deploy to VPS
@@ -116,8 +116,8 @@ jobs:
             echo "**Status:** Deployment successful" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**URLs:**" >> $GITHUB_STEP_SUMMARY
-            echo "- Frontend: https://studio.skyie.tech" >> $GITHUB_STEP_SUMMARY
-            echo "- API: https://studio-api.skyie.tech" >> $GITHUB_STEP_SUMMARY
+            echo "- Frontend: https://studio.skyieglobal.tech" >> $GITHUB_STEP_SUMMARY
+            echo "- API: https://studio-api.skyieglobal.tech" >> $GITHUB_STEP_SUMMARY
           else
             echo "**Status:** Deployment failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY

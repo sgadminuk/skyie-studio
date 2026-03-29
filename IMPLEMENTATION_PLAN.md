@@ -64,7 +64,7 @@
 │         │         │  FFmpeg/Storage  │                        │
 │         └─────────┴────────┬────────┘                        │
 │                            │                                  │
-│  Traefik ─── Let's Encrypt ─── studio.skyie.tech             │
+│  Traefik ─── Let's Encrypt ─── studio.skyieglobal.tech             │
 └────────────────────────────┼─────────────────────────────────┘
                              │ HTTPS (only when needed)
                              ▼
@@ -113,8 +113,8 @@
   - `skyie-studio-redis` (Redis 7)
   - `skyie-studio-postgres` (PostgreSQL 16)
 - [ ] Add Traefik labels for reverse proxy routing
-  - Frontend: `studio.skyie.tech`
-  - API: `studio-api.skyie.tech`
+  - Frontend: `studio.skyieglobal.tech`
+  - API: `studio-api.skyieglobal.tech`
 - [ ] Create Dockerfiles for frontend and backend
 - [ ] Add health checks to all containers
 - [ ] Configure `.env` files for production
@@ -147,7 +147,7 @@
 - [ ] API client layer (`lib/api.ts`) with axios instance
 - [ ] Base responsive layout (mobile + desktop)
 
-**Deliverable:** App runs on VPS via Docker, accessible at studio.skyie.tech, full mock workflow works.
+**Deliverable:** App runs on VPS via Docker, accessible at studio.skyieglobal.tech, full mock workflow works.
 
 ---
 

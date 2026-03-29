@@ -14,6 +14,7 @@ import {
   Loader2,
   Filter,
   RefreshCw,
+  Cpu,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getJobs, createJobWebSocket, type Job } from "@/lib/api";
+import { getJobs, getGpuStatus, createJobWebSocket, type Job, type GpuStatus } from "@/lib/api";
 
 const STATUS_CONFIG = {
   queued: { icon: Clock, variant: "secondary" as const, label: "Queued" },
@@ -71,6 +72,7 @@ function DashboardContent() {
   const highlightJobId = searchParams.get("job");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [gpuStatus, setGpuStatus] = useState<GpuStatus | null>(null);
   const [workflowFilter, setWorkflowFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -81,11 +83,22 @@ function DashboardContent() {
       .finally(() => setLoading(false));
   }, []);
 
+  const fetchGpuStatus = useCallback(() => {
+    getGpuStatus()
+      .then(setGpuStatus)
+      .catch(() => setGpuStatus(null));
+  }, []);
+
   useEffect(() => {
     fetchJobs();
-    const interval = setInterval(fetchJobs, 10000);
-    return () => clearInterval(interval);
-  }, [fetchJobs]);
+    fetchGpuStatus();
+    const jobInterval = setInterval(fetchJobs, 10000);
+    const gpuInterval = setInterval(fetchGpuStatus, 30000);
+    return () => {
+      clearInterval(jobInterval);
+      clearInterval(gpuInterval);
+    };
+  }, [fetchJobs, fetchGpuStatus]);
 
   // Connect WebSocket for active jobs
   useEffect(() => {
@@ -145,6 +158,34 @@ function DashboardContent() {
           Create AI-generated videos with a single click
         </p>
       </div>
+
+      {/* GPU Status */}
+      <Card className={`border ${gpuStatus?.online ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+        <CardContent className="flex items-center gap-3 py-3">
+          <Cpu className={`h-4 w-4 ${gpuStatus?.online ? 'text-green-500' : 'text-red-500'}`} />
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className={`h-2 w-2 rounded-full shrink-0 ${gpuStatus?.online ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+            <span className="text-sm font-medium">
+              GPU {gpuStatus?.online ? 'Online' : 'Offline'}
+            </span>
+            {gpuStatus?.online && gpuStatus.health?.models && (
+              <span className="text-xs text-muted-foreground hidden sm:inline">
+                {gpuStatus.health.models.vram_free_gb}GB VRAM free
+              </span>
+            )}
+            {!gpuStatus?.online && (
+              <span className="text-xs text-muted-foreground">
+                {gpuStatus?.reason === 'heartbeat_expired' ? 'Lost connection' : 'No GPU connected'}
+              </span>
+            )}
+          </div>
+          {gpuStatus?.online && gpuStatus.pod_id && (
+            <Badge variant="secondary" className="text-xs hidden md:inline-flex">
+              {gpuStatus.pod_id.slice(0, 8)}
+            </Badge>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Quick Actions */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
