@@ -3,13 +3,13 @@ from __future__ import annotations
 
 OTPs are stored in Redis with a 10-minute TTL.
 Only the owner email (OWNER_EMAIL) is permitted.
+Email delivery via Maielr REST API.
 """
 
 import logging
 import secrets
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+
+import httpx
 
 from config import settings
 from services.job_queue import redis_client
@@ -20,6 +20,8 @@ OTP_PREFIX = "skyie:otp:"
 OTP_TTL = 600  # 10 minutes
 OTP_LENGTH = 6
 MAX_ATTEMPTS = 5
+
+MAIELR_SEND_URL = "https://relay.maielr.com/v1/email/send"
 
 
 def generate_otp(email: str) -> str:
@@ -70,21 +72,10 @@ def verify_otp(email: str, code: str) -> bool:
 
 
 def send_otp_email(email: str, code: str) -> bool:
-    """Send the OTP code via SMTP email."""
-    if not settings.SMTP_HOST:
-        logger.warning("SMTP not configured — OTP code: %s (dev mode)", code)
+    """Send the OTP code via Maielr REST API."""
+    if not settings.MAIELR_API_KEY:
+        logger.warning("MAIELR_API_KEY not set — OTP code: %s (dev mode)", code)
         return True
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"Skyie Studio — Your login code is {code}"
-    msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
-    msg["To"] = email
-
-    text = (
-        f"Your Skyie Studio login code is: {code}\n\n"
-        "This code expires in 10 minutes.\n\n"
-        "If you didn't request this, ignore this email."
-    )
 
     html = f"""
     <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
@@ -104,23 +95,44 @@ def send_otp_email(email: str, code: str) -> bool:
     </div>
     """
 
-    msg.attach(MIMEText(text, "plain"))
-    msg.attach(MIMEText(html, "html"))
+    text = (
+        f"Your Skyie Studio login code is: {code}\n\n"
+        "This code expires in 10 minutes.\n\n"
+        "If you didn't request this, ignore this email."
+    )
+
+    payload = {
+        "from": settings.MAIELR_FROM_EMAIL,
+        "from_name": settings.MAIELR_FROM_NAME,
+        "to": [email],
+        "subject": f"Skyie Studio — Your login code is {code}",
+        "html": html,
+        "text": text,
+        "reply_to": settings.OWNER_EMAIL,
+    }
 
     try:
-        if settings.SMTP_USE_TLS:
-            server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT)
-            server.starttls()
+        resp = httpx.post(
+            MAIELR_SEND_URL,
+            headers={
+                "Authorization": f"Bearer {settings.MAIELR_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=15.0,
+        )
+        if resp.status_code < 300:
+            data = resp.json()
+            logger.info(
+                "OTP email sent via Maielr: %s (id=%s)",
+                email, data.get("id", "unknown"),
+            )
+            return True
         else:
-            server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT)
-
-        if settings.SMTP_USER:
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-
-        server.sendmail(settings.SMTP_FROM_EMAIL, email, msg.as_string())
-        server.quit()
-        logger.info("OTP email sent to %s", email)
-        return True
+            logger.error(
+                "Maielr API error %d: %s", resp.status_code, resp.text
+            )
+            return False
     except Exception as e:
-        logger.exception("Failed to send OTP email: %s", e)
+        logger.exception("Failed to send OTP email via Maielr: %s", e)
         return False

@@ -42,14 +42,11 @@ class Settings(BaseSettings):
     OWNER_EMAIL: str = "hello@skyieglobal.co.uk"
     OWNER_NAME: str = "Deepak"
 
-    # SMTP (for OTP emails)
-    SMTP_HOST: str = ""
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
-    SMTP_FROM_EMAIL: str = "noreply@skyie.studio"
-    SMTP_FROM_NAME: str = "Skyie Studio"
-    SMTP_USE_TLS: bool = True
+    # Maielr Email API
+    MAIELR_API_KEY: str = ""
+    MAIELR_WEBHOOK_SECRET: str = ""
+    MAIELR_FROM_EMAIL: str = "noreply@skyie.studio"
+    MAIELR_FROM_NAME: str = "Skyie Studio"
 
     # JWT Auth
     JWT_SECRET_KEY: str = "change-this-in-production-to-random-64-char-string"
