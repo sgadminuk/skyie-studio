@@ -130,4 +130,54 @@ class WanVideoWrapper:
         return output_path
 
 
+    async def video_to_video(
+        self,
+        source_path: str,
+        output_path: str,
+        prompt: str = "",
+        strength: float = 0.7,
+        width: int = 1920,
+        height: int = 1080,
+    ) -> str:
+        """Transform an existing video with a prompt (V2V)."""
+        if settings.MOCK_MODE:
+            logger.info("[MOCK] Wan V2V: %s → %s", source_path, output_path)
+            generate_test_video(output_path, 5.0, width, height)
+            return output_path
+
+        from services.gpu_client import gpu_client
+        await gpu_client.infer(
+            endpoint="/infer/v2v",
+            params={"prompt": prompt, "strength": strength, "width": width, "height": height},
+            input_files=[source_path],
+            output_path=output_path,
+            timeout=600,
+        )
+        return output_path
+
+    async def extend_video(
+        self,
+        source_path: str,
+        output_path: str,
+        prompt: str = "",
+        extend_seconds: float = 5.0,
+        direction: str = "forward",
+    ) -> str:
+        """Extend a video forward or backward."""
+        if settings.MOCK_MODE:
+            logger.info("[MOCK] Wan Extend: %s +%.1fs %s", source_path, extend_seconds, direction)
+            generate_test_video(output_path, extend_seconds)
+            return output_path
+
+        from services.gpu_client import gpu_client
+        await gpu_client.infer(
+            endpoint="/infer/extend",
+            params={"prompt": prompt, "extend_seconds": extend_seconds, "direction": direction},
+            input_files=[source_path],
+            output_path=output_path,
+            timeout=600,
+        )
+        return output_path
+
+
 wan_video_wrapper = WanVideoWrapper()

@@ -232,6 +232,34 @@ def run_full_production_task(self, job_id: str, params: dict):
     _run_workflow(job_id, params, execute_full_production)
 
 
+@celery_app.task(name="skyie.run_shots", bind=True)
+def run_shots_task(self, job_id: str, params: dict):
+    """Execute shot creator workflow."""
+    from workflows.shots import execute_shots
+    _run_workflow(job_id, params, execute_shots)
+
+
+@celery_app.task(name="skyie.run_v2v", bind=True)
+def run_v2v_task(self, job_id: str, params: dict):
+    """Execute video-to-video workflow."""
+    from workflows.v2v import execute_v2v
+    _run_workflow(job_id, params, execute_v2v)
+
+
+@celery_app.task(name="skyie.run_extend", bind=True)
+def run_extend_task(self, job_id: str, params: dict):
+    """Execute video extend workflow."""
+    from workflows.v2v import execute_extend
+    _run_workflow(job_id, params, execute_extend)
+
+
+@celery_app.task(name="skyie.run_director", bind=True)
+def run_director_task(self, job_id: str, params: dict):
+    """Execute AI Director workflow."""
+    from workflows.director import execute_director
+    _run_workflow(job_id, params, execute_director)
+
+
 def _run_workflow(job_id: str, params: dict, workflow_fn):
     """Common wrapper for running any workflow."""
     update_job(job_id, status=JobStatus.PROCESSING, started_at=time.time(), step="Starting")

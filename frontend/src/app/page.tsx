@@ -42,6 +42,10 @@ const WORKFLOW_LABELS: Record<string, string> = {
   talking_head: "Talking Head",
   broll: "B-Roll",
   full_production: "Full Production",
+  shots: "Shot Creator",
+  v2v: "Video Transform",
+  extend: "Video Extend",
+  director: "AI Director",
 };
 
 function JobSkeleton() {

@@ -15,6 +15,10 @@ CREDIT_COSTS: dict[str, int] = {
     "talking_head": 10,
     "broll": 15,
     "full_production": 25,
+    "shots": 20,
+    "v2v": 15,
+    "extend": 10,
+    "director": 30,
 }
 
 

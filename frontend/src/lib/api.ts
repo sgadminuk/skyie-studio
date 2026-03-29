@@ -117,6 +117,73 @@ export async function generateFullProduction(params: FullProductionParams) {
   return data;
 }
 
+// ── Phase 1: Shot Creator ──────────────────────────────────────────────────
+
+export interface ShotsParams {
+  shots: Array<{
+    images: string[];
+    prompts: string[];
+    duration: number;
+  }>;
+  aspect_ratio?: string;
+  transition?: string;
+  remove_watermarks?: boolean;
+  auto_enhance?: boolean;
+  generate_music?: boolean;
+  music_prompt?: string;
+  width?: number;
+  height?: number;
+}
+
+export async function generateShots(params: ShotsParams) {
+  const { data } = await api.post("/generate/shots", params);
+  return data;
+}
+
+// ── Phase 4: V2V & Extend ─────────────────────────────────────────────────
+
+export interface V2VParams {
+  source_video: string;
+  prompt: string;
+  strength?: number;
+  style?: string;
+  width?: number;
+  height?: number;
+}
+
+export interface ExtendParams {
+  source_video: string;
+  prompt?: string;
+  extend_seconds?: number;
+  direction?: string;
+}
+
+export async function generateV2V(params: V2VParams) {
+  const { data } = await api.post("/generate/v2v", params);
+  return data;
+}
+
+export async function generateExtend(params: ExtendParams) {
+  const { data } = await api.post("/generate/extend", params);
+  return data;
+}
+
+// ── Phase 8: AI Director ──────────────────────────────────────────────────
+
+export interface DirectorParams {
+  idea: string;
+  style?: string;
+  voice_engine?: string;
+  language?: string;
+  template?: string;
+  duration_target?: number;
+}
+
+export async function generateDirector(params: DirectorParams) {
+  const { data } = await api.post("/generate/director", params);
+  return data;
+}
+
 // ── Jobs ────────────────────────────────────────────────────────────────────
 
 export interface Job {

@@ -13,6 +13,9 @@ import {
   ChevronLeft,
   FolderOpen,
   Shield,
+  ImagePlus,
+  RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/lib/store";
@@ -30,6 +33,9 @@ const NAV_ITEMS = [
 ];
 
 const CREATE_ITEMS = [
+  { href: "/create/director", label: "AI Director", icon: Sparkles },
+  { href: "/create/shots", label: "Shot Creator", icon: ImagePlus },
+  { href: "/create/v2v", label: "Video Transform", icon: RefreshCw },
   { href: "/create/talking-head", label: "Talking Head", icon: Mic },
   { href: "/create/broll", label: "B-Roll", icon: Film },
   { href: "/create/production", label: "Full Production", icon: Video },
