@@ -5,7 +5,6 @@ Upload source images → preprocess → animate each via I2V → stitch into fin
 
 import asyncio
 import logging
-from pathlib import Path
 
 from config import settings
 from services.job_queue import update_job
@@ -44,7 +43,6 @@ async def execute_shots(job_id: str, params: dict) -> str:
     temp = get_temp_dir(job_id)
     shots = params.get("shots", [])
     aspect_ratio = params.get("aspect_ratio")
-    transition = params.get("transition", "cut")
     remove_watermarks = params.get("remove_watermarks", False)
     auto_enhance = params.get("auto_enhance", False)
     generate_music = params.get("generate_music", False)

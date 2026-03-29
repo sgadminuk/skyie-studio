@@ -18,7 +18,8 @@ from models.music_gen import music_gen_wrapper
 
 logger = logging.getLogger(__name__)
 
-DIRECTOR_SYSTEM_PROMPT = """You are an expert video production AI director. Given a topic or idea, you create a detailed production plan.
+DIRECTOR_SYSTEM_PROMPT = """You are an expert video production AI director. \
+Given a topic or idea, you create a detailed production plan.
 
 Output a JSON object with this structure:
 {
@@ -64,7 +65,6 @@ async def execute_director(job_id: str, params: dict) -> str:
     temp = get_temp_dir(job_id)
     idea = params.get("idea", "")
     style = params.get("style", "cinematic, professional, high quality")
-    voice_engine = params.get("voice_engine", "fish_speech")
     language = params.get("language", "en")
     template = params.get("template", "general")
     duration_target = params.get("duration_target", 45)
@@ -86,7 +86,6 @@ async def execute_director(job_id: str, params: dict) -> str:
 
         # Step 2: Generate visuals for each scene (10% → 60%)
         for i, scene in enumerate(scenes):
-            scene_type = scene.get("type", "broll")
             visual_prompt = f"{scene.get('visual_prompt', scene.get('script', ''))}, {style}"
             duration = scene.get("duration", 5)
 

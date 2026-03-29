@@ -80,7 +80,11 @@ def send_otp_email(email: str, code: str) -> bool:
     msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
     msg["To"] = email
 
-    text = f"Your Skyie Studio login code is: {code}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this, ignore this email."
+    text = (
+        f"Your Skyie Studio login code is: {code}\n\n"
+        "This code expires in 10 minutes.\n\n"
+        "If you didn't request this, ignore this email."
+    )
 
     html = f"""
     <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">

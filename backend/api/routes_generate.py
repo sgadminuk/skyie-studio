@@ -104,7 +104,9 @@ async def generate_full_production(
 
     params = request.model_dump()
     job_id = create_job("full_production", params, user_id=str(user.id))
-    await reserve_credits(session, user.id, cost, job_id=uuid_mod.UUID(job_id), description="Full production generation")
+    await reserve_credits(
+        session, user.id, cost, job_id=uuid_mod.UUID(job_id), description="Full production generation",
+    )
     run_full_production_task.delay(job_id, params)
     return {"job_id": job_id, "workflow": "full_production", "status": "queued", "credits_used": cost}
 

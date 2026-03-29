@@ -11,8 +11,6 @@ from pathlib import Path
 
 from PIL import Image, ImageFilter, ImageEnhance
 
-from config import settings
-
 logger = logging.getLogger(__name__)
 
 # Standard aspect ratios with human-readable names
