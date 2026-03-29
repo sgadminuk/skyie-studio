@@ -90,7 +90,7 @@ echo "[6/6] Registering with VPS..."
 POD_ID="${RUNPOD_POD_ID:-unknown}"
 GPU_URL="https://${POD_ID}-8080.proxy.runpod.net"
 
-VPS_URL="${VPS_BACKEND_URL:-https://studio-api.skyieglobal.tech}"
+VPS_URL="${VPS_BACKEND_URL:-https://api.skyie.studio}"
 REG_KEY="${GPU_REGISTRATION_KEY:-}"
 
 if [ -n "$REG_KEY" ]; then

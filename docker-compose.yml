@@ -1,6 +1,6 @@
 # =============================================================================
 # Skyie Studio — Production Docker Compose
-# Domain: studio.skyieglobal.tech (frontend) + studio-api.skyieglobal.tech (backend API)
+# Domain: skyie.studio (frontend) + api.skyie.studio (backend API)
 # =============================================================================
 
 services:
@@ -106,7 +106,7 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=SkyieProxy"
       # HTTPS Router
-      - "traefik.http.routers.skyie-studio-api.rule=Host(`studio-api.skyieglobal.tech`)"
+      - "traefik.http.routers.skyie-studio-api.rule=Host(`api.skyie.studio`)"
       - "traefik.http.routers.skyie-studio-api.entrypoints=websecure"
       - "traefik.http.routers.skyie-studio-api.tls=true"
       - "traefik.http.routers.skyie-studio-api.tls.certresolver=letsencrypt"
@@ -159,7 +159,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: "https://studio-api.skyieglobal.tech"
+        NEXT_PUBLIC_API_URL: "https://api.skyie.studio"
     container_name: skyie-studio-frontend
     restart: unless-stopped
     environment:
@@ -188,7 +188,7 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=SkyieProxy"
       # HTTPS Router
-      - "traefik.http.routers.skyie-studio.rule=Host(`studio.skyieglobal.tech`)"
+      - "traefik.http.routers.skyie-studio.rule=Host(`skyie.studio`)"
       - "traefik.http.routers.skyie-studio.entrypoints=websecure"
       - "traefik.http.routers.skyie-studio.tls=true"
       - "traefik.http.routers.skyie-studio.tls.certresolver=letsencrypt"

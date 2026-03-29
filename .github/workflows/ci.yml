@@ -82,7 +82,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          NEXT_PUBLIC_API_URL: https://studio-api.skyieglobal.tech
+          NEXT_PUBLIC_API_URL: https://api.skyie.studio
 
   # ---------------------------------------------------
   # Docker Build Test
@@ -115,6 +115,6 @@ jobs:
           push: false
           tags: skyie-studio-frontend:test
           build-args: |
-            NEXT_PUBLIC_API_URL=https://studio-api.skyieglobal.tech
+            NEXT_PUBLIC_API_URL=https://api.skyie.studio
           cache-from: type=gha
           cache-to: type=gha,mode=max
