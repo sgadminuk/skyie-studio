@@ -38,6 +38,19 @@ class Settings(BaseSettings):
     GPU_HEARTBEAT_TIMEOUT: int = 120
     HF_API_KEY: str = ""
 
+    # Owner Account (OTP auth)
+    OWNER_EMAIL: str = "hello@skyieglobal.co.uk"
+    OWNER_NAME: str = "Deepak"
+
+    # SMTP (for OTP emails)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@skyieglobal.tech"
+    SMTP_FROM_NAME: str = "Skyie Studio"
+    SMTP_USE_TLS: bool = True
+
     # JWT Auth
     JWT_SECRET_KEY: str = "change-this-in-production-to-random-64-char-string"
     JWT_ALGORITHM: str = "HS256"

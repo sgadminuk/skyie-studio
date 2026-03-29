@@ -17,6 +17,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithOtp: (email: string, code: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   login: async () => {},
+  loginWithOtp: async () => {},
   register: async () => {},
   logout: () => {},
   refreshUser: async () => {},
@@ -60,6 +62,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(data.user);
   }, []);
 
+  const loginWithOtp = useCallback(async (email: string, code: string) => {
+    const { data } = await api.post("/auth/otp/verify", { email, code });
+    localStorage.setItem("skyie_access_token", data.access_token);
+    localStorage.setItem("skyie_refresh_token", data.refresh_token);
+    api.defaults.headers.common["Authorization"] = `Bearer ${data.access_token}`;
+    setUser(data.user);
+  }, []);
+
   const register = useCallback(async (email: string, password: string, name: string) => {
     const { data } = await api.post("/auth/register", { email, password, name });
     localStorage.setItem("skyie_access_token", data.access_token);
@@ -85,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithOtp, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
