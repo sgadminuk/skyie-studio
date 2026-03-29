@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     OWNER_EMAIL: str = "hello@skyieglobal.co.uk"
     OWNER_NAME: str = "Deepak"
 
+    # SMTP (legacy — unused, kept for compat)
+    SMTP_HOST: str = ""
+
     # Maielr Email API
     MAIELR_API_KEY: str = ""
     MAIELR_WEBHOOK_SECRET: str = ""
