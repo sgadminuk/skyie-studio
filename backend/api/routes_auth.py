@@ -19,8 +19,10 @@ from services.auth_service import (
     authenticate_user,
     create_access_token,
     create_refresh_token,
+    create_session,
     decode_token,
     register_user,
+    revoke_session,
 )
 from services.otp_service import generate_otp, verify_otp, send_otp_email
 
@@ -45,6 +47,10 @@ class LoginRequest(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str = ""
 
 
 class TokenResponse(BaseModel):
@@ -81,12 +87,15 @@ async def register(
 ) -> TokenResponse:
     """Register a new user account."""
     try:
-        user = await register_user(session, request.email, request.password, request.name)
+        user = await register_user(
+            session, request.email, request.password, request.name,
+        )
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message)
 
-    access_token = create_access_token(str(user.id), user.email)
-    refresh_token = create_refresh_token(str(user.id))
+    sid = create_session(str(user.id))
+    access_token = create_access_token(str(user.id), user.email, sid)
+    refresh_token = create_refresh_token(str(user.id), sid)
 
     return TokenResponse(
         access_token=access_token,
@@ -108,12 +117,15 @@ async def login(
 ) -> TokenResponse:
     """Authenticate with email and password."""
     try:
-        user = await authenticate_user(session, request.email, request.password)
+        user = await authenticate_user(
+            session, request.email, request.password,
+        )
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message)
 
-    access_token = create_access_token(str(user.id), user.email)
-    refresh_token = create_refresh_token(str(user.id))
+    sid = create_session(str(user.id))
+    access_token = create_access_token(str(user.id), user.email, sid)
+    refresh_token = create_refresh_token(str(user.id), sid)
 
     return TokenResponse(
         access_token=access_token,
@@ -140,17 +152,32 @@ async def refresh(request: RefreshRequest) -> AccessTokenResponse:
         raise HTTPException(status_code=401, detail="Invalid token type")
 
     user_id = payload.get("sub")
+    session_id = payload.get("sid", "")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
-    # Create new access token (email not stored in refresh token, use user_id only)
-    access_token = create_access_token(user_id, "")
-
+    access_token = create_access_token(user_id, "", session_id)
     return AccessTokenResponse(access_token=access_token)
 
 
+@router.post("/logout")
+async def logout(body: LogoutRequest):
+    """Revoke the current session (server-side logout)."""
+    if body.refresh_token:
+        try:
+            payload = decode_token(body.refresh_token)
+            session_id = payload.get("sid", "")
+            if session_id:
+                revoke_session(session_id)
+        except AuthError:
+            pass  # Token already expired/invalid — still "logged out"
+    return {"status": "ok"}
+
+
 @router.get("/me", response_model=UserProfileResponse)
-async def get_me(user: User = Depends(get_current_user)) -> UserProfileResponse:
+async def get_me(
+    user: User = Depends(get_current_user),
+) -> UserProfileResponse:
     """Get the current authenticated user's profile."""
     return UserProfileResponse(
         id=str(user.id),
@@ -184,7 +211,9 @@ async def request_otp(body: OTPRequestBody):
         code = generate_otp(body.email)
         sent = send_otp_email(body.email, code)
         if not sent:
-            raise HTTPException(status_code=500, detail="Failed to send email")
+            raise HTTPException(
+                status_code=500, detail="Failed to send email",
+            )
         return {"status": "sent", "message": "Login code sent to your email"}
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
@@ -202,7 +231,9 @@ async def verify_otp_endpoint(
         raise HTTPException(status_code=401, detail=str(exc))
 
     # Find or create the owner user
-    result = await session.execute(select(User).where(User.email == body.email.lower()))
+    result = await session.execute(
+        select(User).where(User.email == body.email.lower()),
+    )
     user = result.scalar_one_or_none()
 
     if not user:
@@ -222,8 +253,9 @@ async def verify_otp_endpoint(
         await session.refresh(user)
         logger.info("Owner account created: %s", body.email)
 
-    access_token = create_access_token(str(user.id), user.email)
-    refresh_token = create_refresh_token(str(user.id))
+    sid = create_session(str(user.id))
+    access_token = create_access_token(str(user.id), user.email, sid)
+    refresh_token = create_refresh_token(str(user.id), sid)
 
     return TokenResponse(
         access_token=access_token,

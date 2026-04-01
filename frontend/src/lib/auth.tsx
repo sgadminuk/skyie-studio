@@ -78,7 +78,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(data.user);
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const refreshToken = localStorage.getItem("skyie_refresh_token");
+    try {
+      await api.post("/auth/logout", { refresh_token: refreshToken || "" });
+    } catch {
+      // ignore — still clear local state
+    }
     localStorage.removeItem("skyie_access_token");
     localStorage.removeItem("skyie_refresh_token");
     delete api.defaults.headers.common["Authorization"];
