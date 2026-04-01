@@ -75,7 +75,7 @@ class JobStatus(str, Enum):
 
 # ── Job CRUD ─────────────────────────────────────────────────────────────────
 
-def create_job(workflow: str, params: dict) -> str:
+def create_job(workflow: str, params: dict, user_id: str | None = None) -> str:
     """Create a new job in PostgreSQL and cache in Redis."""
     from db.models import Job
 
@@ -86,6 +86,7 @@ def create_job(workflow: str, params: dict) -> str:
     with Session(_sync_engine) as session:
         job = Job(
             id=uuid.UUID(job_id),
+            user_id=uuid.UUID(user_id) if user_id else None,
             workflow=workflow,
             status=JobStatus.QUEUED.value,
             progress=0,
