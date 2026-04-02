@@ -5,7 +5,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const api = axios.create({
   baseURL: `${API_URL}/api/v1`,
   headers: { "Content-Type": "application/json" },
-  timeout: 30000,
+  timeout: 60000,
 });
 
 api.interceptors.response.use(
@@ -240,6 +240,7 @@ export async function uploadAvatar(file: File) {
   form.append("file", file);
   const { data } = await api.post("/assets/avatars", form, {
     headers: { "Content-Type": "multipart/form-data" },
+    timeout: 120000,
   });
   return data;
 }
