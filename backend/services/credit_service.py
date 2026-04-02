@@ -54,6 +54,7 @@ async def reserve_credits(
     user_id: uuid.UUID,
     amount: int,
     job_id: uuid.UUID | None = None,
+    description: str = "Job generation",
 ) -> CreditTransaction:
     """Deduct credits from user balance and create a debit transaction.
 
@@ -77,7 +78,7 @@ async def reserve_credits(
         amount=-amount,
         balance_after=user.credits,
         type="debit",
-        description=f"Job generation ({amount} credits)",
+        description=f"{description} ({amount} credits)",
         job_id=job_id,
         created_at=datetime.now(timezone.utc),
     )
