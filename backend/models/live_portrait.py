@@ -37,7 +37,7 @@ class LivePortraitWrapper:
         await gpu_client.infer(
             endpoint="/infer/lipsync",
             params={},
-            input_files={"avatar": avatar_path, "audio": audio_path},
+            input_files=[avatar_path, audio_path],
             output_path=output_path,
             timeout=300,
         )

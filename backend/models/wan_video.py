@@ -50,7 +50,7 @@ class WanVideoWrapper:
         await gpu_client.infer(
             endpoint="/infer/i2v",
             params={"prompt": prompt, "duration": duration},
-            input_files={"image": image_path},
+            input_files=[image_path],
             output_path=output_path,
             timeout=300,
         )
@@ -74,7 +74,7 @@ class WanVideoWrapper:
         await gpu_client.infer(
             endpoint="/infer/ti2v",
             params={"text": text, "duration": duration},
-            input_files={"image": image_path},
+            input_files=[image_path],
             output_path=output_path,
             timeout=300,
         )
@@ -98,7 +98,7 @@ class WanVideoWrapper:
         await gpu_client.infer(
             endpoint="/infer/animate",
             params={"motion_prompt": motion_prompt, "duration": duration},
-            input_files={"character": character_image},
+            input_files=[character_image],
             output_path=output_path,
             timeout=300,
         )
@@ -122,7 +122,7 @@ class WanVideoWrapper:
         await gpu_client.infer(
             endpoint="/infer/s2v",
             params={"prompt": prompt, "duration": duration},
-            input_files={"audio": audio_path},
+            input_files=[audio_path],
             output_path=output_path,
             timeout=300,
         )

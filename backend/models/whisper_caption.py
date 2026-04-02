@@ -45,7 +45,7 @@ class WhisperWrapper:
         await gpu_client.infer(
             endpoint="/infer/transcribe",
             params=params,
-            input_files={"audio": audio_path},
+            input_files=[audio_path],
             output_path=output_srt,
             timeout=120,
         )
