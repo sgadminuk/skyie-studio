@@ -31,4 +31,5 @@ USER skyie
 EXPOSE 8000
 
 # Default: run the API server
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# 4 workers, 120s timeout (GPU inference can take minutes), graceful shutdown
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--timeout-keep-alive", "120", "--limit-max-requests", "10000"]
