@@ -65,7 +65,7 @@ services:
     restart: unless-stopped
     environment:
       ENVIRONMENT: production
-      MOCK_MODE: "true"
+      MOCK_MODE: ${MOCK_MODE:-false}
       DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-skyie_studio}:${POSTGRES_PASSWORD}@skyie-studio-postgres:5432/${POSTGRES_DB:-skyie_studio}"
       DATABASE_URL_SYNC: "postgresql://${POSTGRES_USER:-skyie_studio}:${POSTGRES_PASSWORD}@skyie-studio-postgres:5432/${POSTGRES_DB:-skyie_studio}"
       REDIS_URL: "redis://skyie-studio-redis:6379/0"
@@ -125,7 +125,7 @@ services:
     environment:
       PYTHONPATH: /app
       ENVIRONMENT: production
-      MOCK_MODE: "true"
+      MOCK_MODE: ${MOCK_MODE:-false}
       DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-skyie_studio}:${POSTGRES_PASSWORD}@skyie-studio-postgres:5432/${POSTGRES_DB:-skyie_studio}"
       DATABASE_URL_SYNC: "postgresql://${POSTGRES_USER:-skyie_studio}:${POSTGRES_PASSWORD}@skyie-studio-postgres:5432/${POSTGRES_DB:-skyie_studio}"
       REDIS_URL: "redis://skyie-studio-redis:6379/0"

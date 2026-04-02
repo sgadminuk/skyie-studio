@@ -6,6 +6,7 @@ backend calls via HTTP.  Authentication is via a shared API key in the
 X-API-Key header.
 """
 
+import gc
 import logging
 import os
 import time
@@ -14,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import aiofiles
+import torch
 from fastapi import (
     Depends,
     FastAPI,
@@ -34,8 +36,10 @@ API_KEY = os.getenv("GPU_API_KEY", "change-me-in-production")
 UPLOAD_DIR = Path(os.getenv("GPU_UPLOAD_DIR", "/workspace/uploads"))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-VRAM_LIMIT_GB = float(os.getenv("VRAM_LIMIT_GB", "23.0"))
+VRAM_LIMIT_GB = float(os.getenv("VRAM_LIMIT_GB", "30.0"))
 registry.vram_limit_gb = VRAM_LIMIT_GB
+
+os.environ["HF_HOME"] = "/workspace/models/.hf_cache"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,12 +48,41 @@ logging.basicConfig(
 logger = logging.getLogger("gpu-server")
 
 # ---------------------------------------------------------------------------
+# Global pipeline cache
+# ---------------------------------------------------------------------------
+_pipelines: dict[str, Any] = {}
+
+
+def _get_pipeline(name: str):
+    """Get or load a pipeline by name. Cached globally."""
+    if name in _pipelines:
+        return _pipelines[name]
+    return None
+
+
+def _unload_pipeline(name: str):
+    """Unload a pipeline and free VRAM."""
+    if name in _pipelines:
+        del _pipelines[name]
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        logger.info("Unloaded pipeline: %s", name)
+
+
+def _unload_all():
+    """Unload all pipelines."""
+    for name in list(_pipelines.keys()):
+        _unload_pipeline(name)
+
+
+# ---------------------------------------------------------------------------
 # FastAPI App
 # ---------------------------------------------------------------------------
 app = FastAPI(
     title="Skyie Studio GPU Inference Server",
-    description="GPU inference endpoints for TTS, lip-sync, video generation, and more.",
-    version="0.1.0",
+    description="GPU inference endpoints for video generation and more.",
+    version="0.2.0",
 )
 
 # ---------------------------------------------------------------------------
@@ -70,14 +103,12 @@ _file_registry: dict[str, Path] = {}
 
 
 def _register_file(path: Path) -> str:
-    """Store a file path and return a UUID-based file_id."""
     file_id = str(uuid.uuid4())
     _file_registry[file_id] = path
     return file_id
 
 
 def _resolve_file(file_id: str) -> Path:
-    """Look up a file_id and return its local path, or raise 404."""
     path = _file_registry.get(file_id)
     if path is None or not path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {file_id}")
@@ -85,20 +116,14 @@ def _resolve_file(file_id: str) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# Pydantic request / response models
+# Pydantic models
 # ---------------------------------------------------------------------------
 
 
 class InferRequest(BaseModel):
-    """Generic inference request body."""
-
     model_key: str | None = None
     params: dict[str, Any] = {}
     input_file_ids: list[str] = []
-
-
-class ModelActionRequest(BaseModel):
-    model_key: str
 
 
 class InferResponse(BaseModel):
@@ -115,9 +140,15 @@ class InferResponse(BaseModel):
 
 @app.get("/health")
 async def health():
+    vram_used = torch.cuda.memory_allocated() / 1e9 if torch.cuda.is_available() else 0
+    vram_total = torch.cuda.get_device_properties(0).total_memory / 1e9 if torch.cuda.is_available() else 0
     return {
         "status": "healthy",
         "uptime_seconds": round(time.time() - _start_time, 1),
+        "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "none",
+        "vram_used_gb": round(vram_used, 2),
+        "vram_total_gb": round(vram_total, 2),
+        "loaded_pipelines": list(_pipelines.keys()),
         "models": registry.get_status(),
     }
 
@@ -138,31 +169,6 @@ async def list_models():
     }
 
 
-@app.post("/models/load", dependencies=[Depends(verify_api_key)])
-async def load_model(req: ModelActionRequest):
-    try:
-        loaded = registry.load_model(req.model_key)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    except RuntimeError as exc:
-        raise HTTPException(status_code=507, detail=str(exc))  # Insufficient Storage
-    return {
-        "status": "loaded",
-        "model": loaded.key,
-        "vram": registry.get_status(),
-    }
-
-
-@app.post("/models/unload", dependencies=[Depends(verify_api_key)])
-async def unload_model(req: ModelActionRequest):
-    registry.unload_model(req.model_key)
-    return {
-        "status": "unloaded",
-        "model": req.model_key,
-        "vram": registry.get_status(),
-    }
-
-
 # ---------------------------------------------------------------------------
 # File upload / download
 # ---------------------------------------------------------------------------
@@ -172,11 +178,9 @@ async def unload_model(req: ModelActionRequest):
 async def upload_file(file: UploadFile = File(...)):
     ext = Path(file.filename or "file").suffix
     dest = UPLOAD_DIR / f"{uuid.uuid4()}{ext}"
-
     async with aiofiles.open(dest, "wb") as f:
-        while chunk := await file.read(1024 * 1024):  # 1 MB chunks
+        while chunk := await file.read(1024 * 1024):
             await f.write(chunk)
-
     file_id = _register_file(dest)
     logger.info("File uploaded: %s -> %s", file_id, dest.name)
     return {"file_id": file_id, "filename": dest.name, "size_bytes": dest.stat().st_size}
@@ -189,326 +193,295 @@ async def download_file(file_id: str):
 
 
 # ---------------------------------------------------------------------------
-# Inference helpers
+# I2V Inference — Wan 2.2 TI2V-5B (the real deal)
 # ---------------------------------------------------------------------------
 
 
-def _ensure_model_loaded(model_key: str | None, default_key: str) -> str:
-    """Make sure the requested (or default) model is loaded."""
-    key = model_key or default_key
-    if key not in MODEL_CATALOGUE:
-        raise HTTPException(status_code=400, detail=f"Unknown model: {key}")
-    if not registry.is_loaded(key):
-        try:
-            registry.load_model(key)
-        except RuntimeError as exc:
-            raise HTTPException(status_code=507, detail=str(exc))
-    return key
+def _load_i2v_pipeline():
+    """Load Wan2.2 TI2V-5B for image-to-video generation."""
+    if "i2v" in _pipelines:
+        return _pipelines["i2v"]
+
+    _unload_all()  # Free VRAM first
+    logger.info("Loading Wan2.2-TI2V-5B pipeline...")
+
+    from diffusers import WanImageToVideoPipeline
+
+    pipe = WanImageToVideoPipeline.from_pretrained(
+        "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+        torch_dtype=torch.bfloat16,
+    )
+    pipe.to("cuda")
+    _pipelines["i2v"] = pipe
+
+    vram = torch.cuda.memory_allocated() / 1e9
+    logger.info("I2V pipeline loaded. VRAM: %.1f GB", vram)
+    return pipe
 
 
-def _resolve_input_files(file_ids: list[str]) -> list[Path]:
-    """Resolve a list of file_ids to local paths."""
-    return [_resolve_file(fid) for fid in file_ids]
-
-
-def _stub_output(task_type: str, model_key: str, params: dict) -> tuple[dict, Path | None]:
-    """
-    STUB: In production, this calls the actual model pipeline.
-    Returns (result_dict, output_file_path | None).
-    """
-    logger.info("STUB inference: type=%s model=%s params=%s", task_type, model_key, params)
-    return {"stub": True, "task": task_type, "model": model_key}, None
-
-
-# ---------------------------------------------------------------------------
-# Inference endpoints
-# ---------------------------------------------------------------------------
-
-
-@app.post("/infer/tts", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
-async def infer_tts(req: InferRequest):
-    """Text-to-Speech inference."""
+@app.post("/infer/i2v", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
+async def infer_i2v(req: InferRequest):
+    """Image-to-Video inference using Wan 2.2 TI2V-5B."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "tts-f5")
-    input_files = _resolve_input_files(req.input_file_ids)
+    input_files = [_resolve_file(fid) for fid in req.input_file_ids]
 
-    result, output_path = _stub_output("tts", key, {
-        **req.params,
-        "input_files": [str(p) for p in input_files],
-    })
+    if not input_files:
+        raise HTTPException(status_code=400, detail="No input image provided")
 
-    output_file_id = _register_file(output_path) if output_path else None
+    pipe = _load_i2v_pipeline()
+
+    from PIL import Image
+    from diffusers.utils import export_to_video
+
+    image = Image.open(str(input_files[0])).convert("RGB")
+    prompt = req.params.get("prompt", "cinematic motion, smooth camera movement")
+    neg_prompt = req.params.get("negative_prompt", "blurry, distorted, low quality, watermark")
+    num_frames = min(int(req.params.get("num_frames", 33)), 81)
+    height = int(req.params.get("height", 832))
+    width = int(req.params.get("width", 480))
+    steps = int(req.params.get("num_inference_steps", 20))
+    guidance = float(req.params.get("guidance_scale", 5.0))
+
+    # Resize image to match target dimensions
+    image = image.resize((width, height), Image.LANCZOS)
+
+    logger.info("I2V: %dx%d, %d frames, %d steps, prompt='%s'",
+                width, height, num_frames, steps, prompt[:80])
+
+    output = pipe(
+        image=image,
+        prompt=prompt,
+        negative_prompt=neg_prompt,
+        num_frames=num_frames,
+        height=height,
+        width=width,
+        num_inference_steps=steps,
+        guidance_scale=guidance,
+    ).frames[0]
+
+    # Export to video
+    output_path = UPLOAD_DIR / f"{uuid.uuid4()}.mp4"
+    export_to_video(output, str(output_path), fps=16)
+    output_file_id = _register_file(output_path)
+
+    elapsed = round(time.time() - t0, 2)
+    logger.info("I2V complete: %d frames, %.1fs, %s", len(output), elapsed, output_path.name)
+
     return InferResponse(
         output_file_id=output_file_id,
-        result=result,
-        elapsed_seconds=round(time.time() - t0, 3),
+        result={"frames": len(output), "width": width, "height": height},
+        elapsed_seconds=elapsed,
     )
 
 
-@app.post("/infer/lipsync", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
-async def infer_lipsync(req: InferRequest):
-    """Lip-sync inference (Wav2Lip)."""
-    t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "wav2lip")
-    input_files = _resolve_input_files(req.input_file_ids)
+# ---------------------------------------------------------------------------
+# T2V Inference — Wan 2.2 TI2V-5B (text only, no input image needed)
+# ---------------------------------------------------------------------------
 
-    result, output_path = _stub_output("lipsync", key, {
-        **req.params,
-        "input_files": [str(p) for p in input_files],
-    })
 
-    output_file_id = _register_file(output_path) if output_path else None
-    return InferResponse(
-        output_file_id=output_file_id,
-        result=result,
-        elapsed_seconds=round(time.time() - t0, 3),
+def _load_t2v_pipeline():
+    """Load Wan2.2-T2V pipeline for text-to-video."""
+    if "t2v" in _pipelines:
+        return _pipelines["t2v"]
+
+    _unload_all()
+    logger.info("Loading Wan2.2-T2V pipeline (using TI2V-5B)...")
+
+    from diffusers import WanPipeline
+
+    pipe = WanPipeline.from_pretrained(
+        "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+        torch_dtype=torch.bfloat16,
     )
+    pipe.enable_model_cpu_offload()
+    _pipelines["t2v"] = pipe
+
+    logger.info("T2V pipeline loaded with CPU offloading")
+    return pipe
 
 
 @app.post("/infer/t2v", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_t2v(req: InferRequest):
     """Text-to-Video inference."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "wan-t2v")
-    input_files = _resolve_input_files(req.input_file_ids)
+    pipe = _load_t2v_pipeline()
 
-    result, output_path = _stub_output("t2v", key, {
-        **req.params,
-        "input_files": [str(p) for p in input_files],
-    })
+    from diffusers.utils import export_to_video
 
-    output_file_id = _register_file(output_path) if output_path else None
+    prompt = req.params.get("prompt", "a beautiful landscape")
+    neg_prompt = req.params.get("negative_prompt", "blurry, distorted")
+    num_frames = min(int(req.params.get("num_frames", 33)), 81)
+    height = int(req.params.get("height", 480))
+    width = int(req.params.get("width", 832))
+    steps = int(req.params.get("num_inference_steps", 20))
+
+    logger.info("T2V: %dx%d, %d frames, prompt='%s'", width, height, num_frames, prompt[:80])
+
+    output = pipe(
+        prompt=prompt,
+        negative_prompt=neg_prompt,
+        num_frames=num_frames,
+        height=height,
+        width=width,
+        num_inference_steps=steps,
+    ).frames[0]
+
+    output_path = UPLOAD_DIR / f"{uuid.uuid4()}.mp4"
+    export_to_video(output, str(output_path), fps=16)
+    output_file_id = _register_file(output_path)
+
+    elapsed = round(time.time() - t0, 2)
+    logger.info("T2V complete: %d frames, %.1fs", len(output), elapsed)
+
     return InferResponse(
         output_file_id=output_file_id,
-        result=result,
-        elapsed_seconds=round(time.time() - t0, 3),
+        result={"frames": len(output)},
+        elapsed_seconds=elapsed,
     )
 
 
-@app.post("/infer/i2v", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
-async def infer_i2v(req: InferRequest):
-    """Image-to-Video inference."""
+# ---------------------------------------------------------------------------
+# Stub endpoints (for features not yet backed by real models)
+# ---------------------------------------------------------------------------
+
+
+def _stub_output(task_type: str, params: dict) -> tuple[dict, Path | None]:
+    logger.info("STUB inference: type=%s params=%s", task_type, {k: str(v)[:50] for k, v in params.items()})
+    return {"stub": True, "task": task_type}, None
+
+
+@app.post("/infer/tts", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
+async def infer_tts(req: InferRequest):
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "wan-i2v")
-    input_files = _resolve_input_files(req.input_file_ids)
-
-    result, output_path = _stub_output("i2v", key, {
-        **req.params,
-        "input_files": [str(p) for p in input_files],
-    })
-
+    result, output_path = _stub_output("tts", req.params)
     output_file_id = _register_file(output_path) if output_path else None
-    return InferResponse(
-        output_file_id=output_file_id,
-        result=result,
-        elapsed_seconds=round(time.time() - t0, 3),
-    )
+    return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
+
+
+@app.post("/infer/lipsync", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
+async def infer_lipsync(req: InferRequest):
+    t0 = time.time()
+    result, output_path = _stub_output("lipsync", req.params)
+    output_file_id = _register_file(output_path) if output_path else None
+    return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
 @app.post("/infer/image", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_image(req: InferRequest):
-    """Image generation inference (FLUX)."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "flux-image")
-    input_files = _resolve_input_files(req.input_file_ids)
-
-    result, output_path = _stub_output("image", key, {
-        **req.params,
-        "input_files": [str(p) for p in input_files],
-    })
-
+    result, output_path = _stub_output("image", req.params)
     output_file_id = _register_file(output_path) if output_path else None
-    return InferResponse(
-        output_file_id=output_file_id,
-        result=result,
-        elapsed_seconds=round(time.time() - t0, 3),
-    )
+    return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
 @app.post("/infer/music", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_music(req: InferRequest):
-    """Music generation inference (YuE)."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "yue-music")
-    input_files = _resolve_input_files(req.input_file_ids)
-
-    result, output_path = _stub_output("music", key, {
-        **req.params,
-        "input_files": [str(p) for p in input_files],
-    })
-
+    result, output_path = _stub_output("music", req.params)
     output_file_id = _register_file(output_path) if output_path else None
-    return InferResponse(
-        output_file_id=output_file_id,
-        result=result,
-        elapsed_seconds=round(time.time() - t0, 3),
-    )
+    return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
 @app.post("/infer/transcribe", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_transcribe(req: InferRequest):
-    """Audio transcription inference (Whisper)."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "whisper-large")
-    input_files = _resolve_input_files(req.input_file_ids)
-
-    result, output_path = _stub_output("transcribe", key, {
-        **req.params,
-        "input_files": [str(p) for p in input_files],
-    })
-
+    result, output_path = _stub_output("transcribe", req.params)
     output_file_id = _register_file(output_path) if output_path else None
-    return InferResponse(
-        output_file_id=output_file_id,
-        result=result,
-        elapsed_seconds=round(time.time() - t0, 3),
-    )
+    return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
-
-# ---------------------------------------------------------------------------
-# Phase 4: Video-to-Video & Extend
-# ---------------------------------------------------------------------------
 
 @app.post("/infer/v2v", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_v2v(req: InferRequest):
-    """Video-to-Video transformation."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "wan-v2v")
-    input_files = _resolve_input_files(req.input_file_ids)
-    result, output_path = _stub_output("v2v", key, {**req.params, "input_files": [str(p) for p in input_files]})
+    result, output_path = _stub_output("v2v", req.params)
     output_file_id = _register_file(output_path) if output_path else None
     return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
 @app.post("/infer/extend", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_extend(req: InferRequest):
-    """Video extend inference."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "wan-v2v")
-    input_files = _resolve_input_files(req.input_file_ids)
-    result, output_path = _stub_output("extend", key, {**req.params, "input_files": [str(p) for p in input_files]})
+    result, output_path = _stub_output("extend", req.params)
     output_file_id = _register_file(output_path) if output_path else None
     return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
-# ---------------------------------------------------------------------------
-# Phase 5: Upscaling & Enhancement
-# ---------------------------------------------------------------------------
-
 @app.post("/infer/upscale", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_upscale(req: InferRequest):
-    """Video/image upscaling (Real-ESRGAN)."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "realesrgan")
-    input_files = _resolve_input_files(req.input_file_ids)
-    result, output_path = _stub_output("upscale", key, {**req.params, "input_files": [str(p) for p in input_files]})
+    result, output_path = _stub_output("upscale", req.params)
     output_file_id = _register_file(output_path) if output_path else None
     return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
 @app.post("/infer/interpolate", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_interpolate(req: InferRequest):
-    """Frame interpolation (RIFE)."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "rife")
-    input_files = _resolve_input_files(req.input_file_ids)
-    result, output_path = _stub_output("interpolate", key, {**req.params, "input_files": [str(p) for p in input_files]})
+    result, output_path = _stub_output("interpolate", req.params)
     output_file_id = _register_file(output_path) if output_path else None
     return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
 @app.post("/infer/face-enhance", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_face_enhance(req: InferRequest):
-    """Face enhancement (CodeFormer/GFPGAN)."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "codeformer")
-    input_files = _resolve_input_files(req.input_file_ids)
-    result, output_path = _stub_output("face_enhance", key, {**req.params, "input_files": [str(p) for p in input_files]})
+    result, output_path = _stub_output("face_enhance", req.params)
     output_file_id = _register_file(output_path) if output_path else None
     return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
-# ---------------------------------------------------------------------------
-# Phase 6: Editing
-# ---------------------------------------------------------------------------
-
 @app.post("/infer/inpaint", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_inpaint(req: InferRequest):
-    """Video/image inpainting (ProPainter)."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "propainter")
-    input_files = _resolve_input_files(req.input_file_ids)
-    result, output_path = _stub_output("inpaint", key, {**req.params, "input_files": [str(p) for p in input_files]})
+    result, output_path = _stub_output("inpaint", req.params)
     output_file_id = _register_file(output_path) if output_path else None
     return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
 @app.post("/infer/bg-remove", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_bg_remove(req: InferRequest):
-    """Background removal/replacement."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "sam2")
-    input_files = _resolve_input_files(req.input_file_ids)
-    result, output_path = _stub_output("bg_remove", key, {**req.params, "input_files": [str(p) for p in input_files]})
+    result, output_path = _stub_output("bg_remove", req.params)
     output_file_id = _register_file(output_path) if output_path else None
     return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
 @app.post("/infer/segment", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_segment(req: InferRequest):
-    """Object segmentation (SAM2)."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "sam2")
-    input_files = _resolve_input_files(req.input_file_ids)
-    result, output_path = _stub_output("segment", key, {**req.params, "input_files": [str(p) for p in input_files]})
+    result, output_path = _stub_output("segment", req.params)
     output_file_id = _register_file(output_path) if output_path else None
     return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
 @app.post("/infer/style-transfer", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_style_transfer(req: InferRequest):
-    """Style transfer."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "wan-v2v")
-    input_files = _resolve_input_files(req.input_file_ids)
-    result, output_path = _stub_output("style_transfer", key, {**req.params, "input_files": [str(p) for p in input_files]})
+    result, output_path = _stub_output("style_transfer", req.params)
     output_file_id = _register_file(output_path) if output_path else None
     return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
-# ---------------------------------------------------------------------------
-# Phase 7: Audio
-# ---------------------------------------------------------------------------
-
 @app.post("/infer/sfx", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_sfx(req: InferRequest):
-    """Sound effect generation (AudioLDM2)."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "audioldm2")
-    input_files = _resolve_input_files(req.input_file_ids)
-    result, output_path = _stub_output("sfx", key, {**req.params, "input_files": [str(p) for p in input_files]})
+    result, output_path = _stub_output("sfx", req.params)
     output_file_id = _register_file(output_path) if output_path else None
     return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
 @app.post("/infer/voice-convert", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_voice_convert(req: InferRequest):
-    """Voice conversion."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "tts-f5")
-    input_files = _resolve_input_files(req.input_file_ids)
-    result, output_path = _stub_output("voice_convert", key, {**req.params, "input_files": [str(p) for p in input_files]})
+    result, output_path = _stub_output("voice_convert", req.params)
     output_file_id = _register_file(output_path) if output_path else None
     return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
 
 @app.post("/infer/stems", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_stems(req: InferRequest):
-    """Audio stem separation (Demucs)."""
     t0 = time.time()
-    key = _ensure_model_loaded(req.model_key, "demucs")
-    input_files = _resolve_input_files(req.input_file_ids)
-    result, output_path = _stub_output("stems", key, {**req.params, "input_files": [str(p) for p in input_files]})
+    result, output_path = _stub_output("stems", req.params)
     output_file_id = _register_file(output_path) if output_path else None
     return InferResponse(output_file_id=output_file_id, result=result, elapsed_seconds=round(time.time() - t0, 3))
 
