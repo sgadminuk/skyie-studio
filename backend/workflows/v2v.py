@@ -29,7 +29,7 @@ async def execute_v2v(job_id: str, params: dict) -> str:
     if not settings.MOCK_MODE:
         from services.gpu_client import gpu_client
         health = await gpu_client.health_check()
-        if not health.get("healthy"):
+        if health.get("status") != "healthy":
             raise RuntimeError("GPU server is not available")
 
     temp = get_temp_dir(job_id)
@@ -86,7 +86,7 @@ async def execute_extend(job_id: str, params: dict) -> str:
     if not settings.MOCK_MODE:
         from services.gpu_client import gpu_client
         health = await gpu_client.health_check()
-        if not health.get("healthy"):
+        if health.get("status") != "healthy":
             raise RuntimeError("GPU server is not available")
 
     temp = get_temp_dir(job_id)
