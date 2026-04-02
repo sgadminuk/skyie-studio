@@ -20,10 +20,11 @@ export function useJobProgress(jobId: string | null) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(Date.now());
   const reconnectAttemptsRef = useRef(0);
+  const terminalRef = useRef(false);
   const maxReconnects = 5;
 
   const connect = useCallback(() => {
-    if (!jobId) return;
+    if (!jobId || terminalRef.current) return;
 
     try {
       const ws = createJobWebSocket(jobId);
@@ -36,6 +37,11 @@ export function useJobProgress(jobId: string | null) {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          const isTerminal =
+            data.status === "completed" ||
+            data.status === "failed" ||
+            data.status === "cancelled";
+
           setProgress((prev) => ({
             id: jobId,
             status: data.status || prev?.status || "queued",
@@ -47,7 +53,8 @@ export function useJobProgress(jobId: string | null) {
             elapsed: (Date.now() - startTimeRef.current) / 1000,
           }));
 
-          if (data.status === "completed" || data.status === "failed") {
+          if (isTerminal) {
+            terminalRef.current = true;
             ws.close();
             if (timerRef.current) clearInterval(timerRef.current);
           }
@@ -58,9 +65,8 @@ export function useJobProgress(jobId: string | null) {
 
       ws.onclose = () => {
         if (
-          reconnectAttemptsRef.current < maxReconnects &&
-          progress?.status !== "completed" &&
-          progress?.status !== "failed"
+          !terminalRef.current &&
+          reconnectAttemptsRef.current < maxReconnects
         ) {
           const delay = Math.min(1000 * 2 ** reconnectAttemptsRef.current, 10000);
           reconnectAttemptsRef.current++;
@@ -74,12 +80,14 @@ export function useJobProgress(jobId: string | null) {
     } catch {
       // WebSocket creation failed
     }
-  }, [jobId, progress?.status]);
+  }, [jobId]);
 
   useEffect(() => {
     if (!jobId) return;
 
+    terminalRef.current = false;
     startTimeRef.current = Date.now();
+    reconnectAttemptsRef.current = 0;
     setProgress({
       id: jobId,
       status: "queued",
@@ -99,6 +107,7 @@ export function useJobProgress(jobId: string | null) {
     }, 1000);
 
     return () => {
+      terminalRef.current = true;
       wsRef.current?.close();
       if (timerRef.current) clearInterval(timerRef.current);
     };
