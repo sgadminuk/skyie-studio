@@ -198,24 +198,36 @@ async def download_file(file_id: str):
 
 
 def _load_i2v_pipeline():
-    """Load Wan2.2 TI2V-5B for image-to-video generation."""
+    """Load the best I2V model based on available VRAM.
+
+    >=48GB VRAM → Wan 2.2 I2V-A14B (MoE, best quality)
+    <48GB VRAM  → Wan 2.2 TI2V-5B (compact, good quality)
+    """
     if "i2v" in _pipelines:
         return _pipelines["i2v"]
 
-    _unload_all()  # Free VRAM first
-    logger.info("Loading Wan2.2-TI2V-5B pipeline...")
+    _unload_all()
 
     from diffusers import WanImageToVideoPipeline
 
+    vram_total = torch.cuda.get_device_properties(0).total_memory / 1e9
+
+    if vram_total >= 48:
+        model_id = "Wan-AI/Wan2.2-I2V-A14B-Diffusers"
+        logger.info("Loading Wan2.2-I2V-A14B (14B MoE, VRAM: %.0fGB)...", vram_total)
+    else:
+        model_id = "Wan-AI/Wan2.2-TI2V-5B-Diffusers"
+        logger.info("Loading Wan2.2-TI2V-5B (5B, VRAM: %.0fGB)...", vram_total)
+
     pipe = WanImageToVideoPipeline.from_pretrained(
-        "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+        model_id,
         torch_dtype=torch.bfloat16,
     )
     pipe.to("cuda")
     _pipelines["i2v"] = pipe
 
-    vram = torch.cuda.memory_allocated() / 1e9
-    logger.info("I2V pipeline loaded. VRAM: %.1f GB", vram)
+    vram_used = torch.cuda.memory_allocated() / 1e9
+    logger.info("I2V pipeline loaded: %s (VRAM: %.1f GB used)", model_id, vram_used)
     return pipe
 
 
