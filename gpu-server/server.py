@@ -242,71 +242,118 @@ def _load_i2v_pipeline():
     return pipe
 
 
+# ---------------------------------------------------------------------------
+# Async inference job queue (avoids RunPod proxy 100s timeout)
+# ---------------------------------------------------------------------------
+import threading
+
+_inference_jobs: dict[str, dict] = {}  # job_id -> {status, result, error}
+
+
+def _run_i2v_job(job_id: str, image_path: str, params: dict):
+    """Run I2V inference in a background thread."""
+    try:
+        pipe = _load_i2v_pipeline()
+        from PIL import Image
+        from diffusers.utils import export_to_video
+
+        image = Image.open(image_path).convert("RGB")
+        orig_w, orig_h = image.size
+
+        prompt = params.get("prompt", "cinematic motion, smooth camera movement")
+        neg_prompt = params.get(
+            "negative_prompt",
+            "distorted face, deformed, blurry, low quality, watermark, static",
+        )
+        num_frames = min(int(params.get("num_frames", 49)), 81)
+        steps = int(params.get("num_inference_steps", 20))
+        guidance = float(params.get("guidance_scale", 5.0))
+
+        max_pixels = 720 * 1280
+        scale = min(1.0, (max_pixels / (orig_w * orig_h)) ** 0.5)
+        width = int(orig_w * scale) // 16 * 16
+        height = int(orig_h * scale) // 16 * 16
+        width = max(width, 256)
+        height = max(height, 256)
+        image = image.resize((width, height), Image.LANCZOS)
+
+        logger.info(
+            "I2V [%s]: %dx%d (from %dx%d), %d frames, %d steps",
+            job_id[:8], width, height, orig_w, orig_h, num_frames, steps,
+        )
+
+        output = pipe(
+            image=image,
+            prompt=prompt,
+            negative_prompt=neg_prompt,
+            num_frames=num_frames,
+            height=height,
+            width=width,
+            num_inference_steps=steps,
+            guidance_scale=guidance,
+        ).frames[0]
+
+        output_path = UPLOAD_DIR / f"{uuid.uuid4()}.mp4"
+        export_to_video(output, str(output_path), fps=16)
+        file_id = _register_file(output_path)
+
+        _inference_jobs[job_id] = {
+            "status": "complete",
+            "output_file_id": file_id,
+            "frames": len(output),
+            "width": width,
+            "height": height,
+        }
+        logger.info("I2V [%s] complete: %d frames, %s", job_id[:8], len(output), output_path.name)
+
+    except Exception as e:
+        logger.exception("I2V [%s] failed: %s", job_id[:8], e)
+        _inference_jobs[job_id] = {"status": "failed", "error": str(e)}
+
+
 @app.post("/infer/i2v", dependencies=[Depends(verify_api_key)], response_model=InferResponse)
 async def infer_i2v(req: InferRequest):
-    """Image-to-Video inference using Wan 2.2 TI2V-5B."""
-    t0 = time.time()
+    """Image-to-Video inference — starts async job, returns immediately."""
     input_files = [_resolve_file(fid) for fid in req.input_file_ids]
-
     if not input_files:
         raise HTTPException(status_code=400, detail="No input image provided")
 
-    pipe = _load_i2v_pipeline()
+    job_id = str(uuid.uuid4())
+    _inference_jobs[job_id] = {"status": "processing"}
 
-    from PIL import Image
-    from diffusers.utils import export_to_video
-
-    image = Image.open(str(input_files[0])).convert("RGB")
-    orig_w, orig_h = image.size
-
-    prompt = req.params.get("prompt", "cinematic motion, smooth camera movement")
-    neg_prompt = req.params.get(
-        "negative_prompt",
-        "distorted face, deformed, blurry, low quality, watermark, static",
+    thread = threading.Thread(
+        target=_run_i2v_job,
+        args=(job_id, str(input_files[0]), req.params),
+        daemon=True,
     )
-    num_frames = min(int(req.params.get("num_frames", 81)), 81)
-    steps = int(req.params.get("num_inference_steps", 30))
-    guidance = float(req.params.get("guidance_scale", 5.0))
-
-    # Scale image to fit VRAM — max 720p, dimensions must be divisible by 16
-    max_pixels = 720 * 1280
-    scale = min(1.0, (max_pixels / (orig_w * orig_h)) ** 0.5)
-    width = int(orig_w * scale) // 16 * 16
-    height = int(orig_h * scale) // 16 * 16
-    width = max(width, 256)
-    height = max(height, 256)
-
-    image = image.resize((width, height), Image.LANCZOS)
-
-    logger.info(
-        "I2V: %dx%d (from %dx%d), %d frames, %d steps, prompt='%s'",
-        width, height, orig_w, orig_h, num_frames, steps, prompt[:80],
-    )
-
-    output = pipe(
-        image=image,
-        prompt=prompt,
-        negative_prompt=neg_prompt,
-        num_frames=num_frames,
-        height=height,
-        width=width,
-        num_inference_steps=steps,
-        guidance_scale=guidance,
-    ).frames[0]
-
-    # Export at 16fps
-    output_path = UPLOAD_DIR / f"{uuid.uuid4()}.mp4"
-    export_to_video(output, str(output_path), fps=16)
-    output_file_id = _register_file(output_path)
-
-    elapsed = round(time.time() - t0, 2)
-    logger.info("I2V complete: %d frames, %.1fs, %s", len(output), elapsed, output_path.name)
+    thread.start()
 
     return InferResponse(
-        output_file_id=output_file_id,
-        result={"frames": len(output), "width": width, "height": height},
-        elapsed_seconds=elapsed,
+        status="processing",
+        result={"inference_job_id": job_id},
+        elapsed_seconds=0,
     )
+
+
+@app.get("/infer/status/{job_id}", dependencies=[Depends(verify_api_key)])
+async def infer_status(job_id: str):
+    """Poll inference job status."""
+    job = _inference_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job["status"] == "complete":
+        _inference_jobs.pop(job_id, None)
+        return InferResponse(
+            status="ok",
+            output_file_id=job.get("output_file_id"),
+            result={"frames": job.get("frames"), "width": job.get("width"), "height": job.get("height")},
+        )
+    elif job["status"] == "failed":
+        _inference_jobs.pop(job_id, None)
+        raise HTTPException(status_code=500, detail=job.get("error", "Inference failed"))
+
+    return InferResponse(status="processing", result={"inference_job_id": job_id})
 
 
 # ---------------------------------------------------------------------------

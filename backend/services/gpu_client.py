@@ -190,13 +190,19 @@ class GPUClient:
             payload["model_key"] = model_key
 
         logger.info("Calling %s with %d input files", endpoint, len(input_file_ids))
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with httpx.AsyncClient(timeout=90) as client:
             resp = await client.post(
                 self._url(endpoint),
                 headers=self._headers(),
                 json=payload,
             )
             data = self._check_response(resp)
+
+        # Step 2b: If async inference, poll for completion
+        inference_job_id = data.get("result", {}).get("inference_job_id")
+        if inference_job_id and data.get("status") == "processing":
+            logger.info("Async inference started: %s, polling...", inference_job_id)
+            data = await self._poll_inference(inference_job_id, timeout)
 
         # Step 3: Download output file if present
         output_file_id = data.get("output_file_id")
@@ -210,6 +216,37 @@ class GPUClient:
             data.get("elapsed_seconds", 0),
         )
         return data
+
+    async def _poll_inference(self, inference_job_id: str, timeout: int) -> dict:
+        """Poll GPU server for async inference job completion."""
+        import time as _time
+
+        start = _time.time()
+        poll_interval = 5
+
+        while _time.time() - start < timeout:
+            await asyncio.sleep(poll_interval)
+            try:
+                async with httpx.AsyncClient(timeout=30) as client:
+                    resp = await client.get(
+                        self._url(f"/infer/status/{inference_job_id}"),
+                        headers=self._headers(),
+                    )
+                    data = self._check_response(resp)
+
+                if data.get("status") == "ok":
+                    logger.info("Inference %s complete", inference_job_id[:8])
+                    return data
+                # Still processing — continue polling
+            except GPUClientError as e:
+                if e.status_code == 500:
+                    raise  # Inference failed
+                logger.warning("Poll error (retrying): %s", e)
+
+        raise GPUClientError(
+            f"Inference timed out after {timeout}s",
+            detail=inference_job_id,
+        )
 
     async def infer_with_retry(
         self,
