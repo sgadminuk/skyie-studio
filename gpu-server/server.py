@@ -155,6 +155,17 @@ async def health():
 
 _start_time = time.time()
 
+
+@app.on_event("startup")
+async def preload_models():
+    """Pre-load I2V model on server startup to avoid proxy timeout on first request."""
+    try:
+        logger.info("Pre-loading I2V pipeline on startup...")
+        _load_i2v_pipeline()
+        logger.info("I2V pipeline pre-loaded and ready")
+    except Exception as e:
+        logger.warning("Failed to pre-load I2V: %s (will load on first request)", e)
+
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------

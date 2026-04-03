@@ -47,14 +47,15 @@ class WanVideoWrapper:
 
         from services.gpu_client import gpu_client
 
-        # Convert duration to frames: 16fps, must be 4n+1, max 81
-        num_frames = min(max(int(duration * 16) // 4 * 4 + 1, 17), 81)
+        # Convert duration to frames: 16fps, must be 4n+1, max 49 (3s)
+        # 49 frames at 16fps = ~3s — sweet spot for quality vs speed
+        num_frames = min(max(int(duration * 16) // 4 * 4 + 1, 17), 49)
         await gpu_client.infer(
             endpoint="/infer/i2v",
             params={
                 "prompt": prompt,
                 "num_frames": num_frames,
-                "num_inference_steps": 30,
+                "num_inference_steps": 20,
                 "guidance_scale": 5.0,
                 "negative_prompt": (
                     "distorted face, deformed features, blurry, "
@@ -63,7 +64,7 @@ class WanVideoWrapper:
             },
             input_files=[image_path],
             output_path=output_path,
-            timeout=600,
+            timeout=1800,
         )
         return output_path
 
