@@ -234,19 +234,31 @@ async def infer_i2v(req: InferRequest):
     from diffusers.utils import export_to_video
 
     image = Image.open(str(input_files[0])).convert("RGB")
+    orig_w, orig_h = image.size
+
     prompt = req.params.get("prompt", "cinematic motion, smooth camera movement")
-    neg_prompt = req.params.get("negative_prompt", "blurry, distorted, low quality, watermark")
-    num_frames = min(int(req.params.get("num_frames", 33)), 81)
-    height = int(req.params.get("height", 832))
-    width = int(req.params.get("width", 480))
-    steps = int(req.params.get("num_inference_steps", 20))
+    neg_prompt = req.params.get(
+        "negative_prompt",
+        "distorted face, deformed, blurry, low quality, watermark, static",
+    )
+    num_frames = min(int(req.params.get("num_frames", 81)), 81)
+    steps = int(req.params.get("num_inference_steps", 30))
     guidance = float(req.params.get("guidance_scale", 5.0))
 
-    # Resize image to match target dimensions
+    # Scale image to fit VRAM — max 720p, dimensions must be divisible by 16
+    max_pixels = 720 * 1280
+    scale = min(1.0, (max_pixels / (orig_w * orig_h)) ** 0.5)
+    width = int(orig_w * scale) // 16 * 16
+    height = int(orig_h * scale) // 16 * 16
+    width = max(width, 256)
+    height = max(height, 256)
+
     image = image.resize((width, height), Image.LANCZOS)
 
-    logger.info("I2V: %dx%d, %d frames, %d steps, prompt='%s'",
-                width, height, num_frames, steps, prompt[:80])
+    logger.info(
+        "I2V: %dx%d (from %dx%d), %d frames, %d steps, prompt='%s'",
+        width, height, orig_w, orig_h, num_frames, steps, prompt[:80],
+    )
 
     output = pipe(
         image=image,
@@ -259,7 +271,7 @@ async def infer_i2v(req: InferRequest):
         guidance_scale=guidance,
     ).frames[0]
 
-    # Export to video
+    # Export at 16fps
     output_path = UPLOAD_DIR / f"{uuid.uuid4()}.mp4"
     export_to_video(output, str(output_path), fps=16)
     output_file_id = _register_file(output_path)

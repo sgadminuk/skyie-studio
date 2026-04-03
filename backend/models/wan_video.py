@@ -47,12 +47,23 @@ class WanVideoWrapper:
 
         from services.gpu_client import gpu_client
 
+        # Convert duration to frames: 16fps, must be 4n+1, max 81
+        num_frames = min(max(int(duration * 16) // 4 * 4 + 1, 17), 81)
         await gpu_client.infer(
             endpoint="/infer/i2v",
-            params={"prompt": prompt, "duration": duration},
+            params={
+                "prompt": prompt,
+                "num_frames": num_frames,
+                "num_inference_steps": 30,
+                "guidance_scale": 5.0,
+                "negative_prompt": (
+                    "distorted face, deformed features, blurry, "
+                    "low quality, watermark, static, no motion"
+                ),
+            },
             input_files=[image_path],
             output_path=output_path,
-            timeout=300,
+            timeout=600,
         )
         return output_path
 
