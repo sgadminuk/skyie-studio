@@ -29,6 +29,9 @@ echo "========================================="
 echo "  Skyie Studio GPU — $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 echo "========================================="
 
+# ── Fix DNS (RunPod Docker DNS can't resolve .studio TLD) ────────────────────
+grep -q "8.8.8.8" /etc/resolv.conf || echo -e "nameserver 8.8.8.8\nnameserver 1.1.1.1" >> /etc/resolv.conf
+
 # ── Load config from persistent storage ──────────────────────────────────────
 source /workspace/config/.env
 
