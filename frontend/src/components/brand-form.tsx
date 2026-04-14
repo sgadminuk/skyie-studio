@@ -169,10 +169,38 @@ export function BrandForm({
             <div className="flex items-start gap-4">
               <div className="h-28 w-28 rounded-md border bg-muted flex items-center justify-center p-2 shrink-0 overflow-hidden">
                 {logoError ? (
-                  <div className="flex flex-col items-center justify-center text-center text-[10px] text-muted-foreground">
-                    <AlertTriangle className="h-4 w-4 text-amber-500 mb-1" />
+                  <div className="flex flex-col items-center justify-center text-center text-[9px] text-muted-foreground gap-0.5 px-1">
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
                     <span>Preview failed</span>
+                    <a
+                      href={logoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline break-all"
+                    >
+                      Open in new tab
+                    </a>
                   </div>
+                ) : logoUrl.toLowerCase().endsWith(".svg") ? (
+                  // <object> renders cross-origin SVG with the browser's full
+                  // SVG engine (<img> has quirks with certain SVGs — viewBox,
+                  // intrinsic sizing, etc). onError-via-onLoadError.
+                  <object
+                    key={logoUrl}
+                    data={logoUrl}
+                    type="image/svg+xml"
+                    aria-label="Brand logo"
+                    className="max-h-full max-w-full pointer-events-none"
+                    onLoad={() => setLogoError(false)}
+                    onError={() => setLogoError(true)}
+                  >
+                    <img
+                      src={logoUrl}
+                      alt="Brand logo"
+                      className="max-h-full max-w-full object-contain"
+                      onError={() => setLogoError(true)}
+                    />
+                  </object>
                 ) : (
                   <img
                     key={logoUrl}
