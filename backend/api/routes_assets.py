@@ -1,7 +1,13 @@
 """Asset management — avatars, voices, generated videos."""
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from services.storage_service import save_upload, list_assets, delete_asset, get_asset_url
+from services.storage_service import (
+    save_upload,
+    list_assets,
+    list_generated_outputs,
+    delete_asset,
+    get_asset_url,
+)
 
 router = APIRouter(prefix="/api/v1/assets", tags=["assets"])
 
@@ -85,8 +91,29 @@ async def preview_voice(
 
 @router.get("/videos")
 async def list_videos():
-    """List all generated videos."""
-    return {"videos": list_assets("generated")}
+    """List all generated videos (walks per-job subdirs under OUTPUT_PATH)."""
+    return {"videos": list_generated_outputs("video")}
+
+
+# --- Generated Images ---
+
+@router.get("/images")
+async def list_images():
+    """List all generated images (Gemini Nano Banana + edits)."""
+    return {"images": list_generated_outputs("image")}
+
+
+@router.delete("/images/{job_id}")
+async def delete_image(job_id: str):
+    """Delete a generated image job directory."""
+    from config import settings
+    import shutil
+
+    output_dir = settings.OUTPUT_PATH / job_id
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+        return {"deleted": True}
+    raise HTTPException(status_code=404, detail="Image not found")
 
 
 @router.get("/videos/{job_id}")

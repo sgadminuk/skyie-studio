@@ -80,6 +80,44 @@ def list_assets(category: str) -> list[dict]:
     return assets
 
 
+_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
+_VIDEO_EXTS = {".mp4", ".mov", ".webm", ".mkv"}
+
+
+def list_generated_outputs(kind: str) -> list[dict]:
+    """List generated outputs recursively from OUTPUT_PATH.
+
+    kind: "image" or "video" — filters by file extension.
+    Returns newest first. Each entry includes the parent job_id so the
+    frontend can link back to the job detail page.
+    """
+    output_dir = settings.OUTPUT_PATH
+    if not output_dir.exists():
+        return []
+
+    exts = _IMAGE_EXTS if kind == "image" else _VIDEO_EXTS
+    results: list[dict] = []
+    for job_dir in output_dir.iterdir():
+        if not job_dir.is_dir() or job_dir.name.startswith("."):
+            continue
+        for f in job_dir.iterdir():
+            if not f.is_file() or f.name.startswith("."):
+                continue
+            if f.suffix.lower() not in exts:
+                continue
+            results.append({
+                "filename": f.name,
+                "path": str(f),
+                "url": get_asset_url(str(f)),
+                "size_bytes": f.stat().st_size,
+                "modified": f.stat().st_mtime,
+                "job_id": job_dir.name,
+            })
+
+    results.sort(key=lambda r: r["modified"], reverse=True)
+    return results
+
+
 def delete_asset(file_path: str) -> bool:
     """Delete an asset file."""
     path = Path(file_path)

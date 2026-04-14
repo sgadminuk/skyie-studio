@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import {
   Video,
   Image as ImageIcon,
+  Sparkles,
   Mic2,
   Download,
   Trash2,
@@ -16,6 +18,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   getVideos,
+  getImages,
+  deleteImage,
   getAvatars,
   getVoices,
   deleteVideo,
@@ -29,6 +33,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function LibraryPage() {
   const [videos, setVideos] = useState<AssetItem[]>([]);
+  const [images, setImages] = useState<AssetItem[]>([]);
   const [avatars, setAvatars] = useState<AssetItem[]>([]);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,14 +43,25 @@ export default function LibraryPage() {
 
   function fetchAll() {
     setLoading(true);
-    Promise.all([getVideos(), getAvatars(), getVoices()])
-      .then(([v, a, vo]) => {
+    Promise.all([getVideos(), getImages(), getAvatars(), getVoices()])
+      .then(([v, img, a, vo]) => {
         setVideos(v);
+        setImages(img);
         setAvatars(a);
         setVoices(vo);
       })
       .catch(() => toast.error("Failed to load assets"))
       .finally(() => setLoading(false));
+  }
+
+  async function handleDeleteImage(jobId: string) {
+    try {
+      await deleteImage(jobId);
+      setImages((prev) => prev.filter((img) => img.job_id !== jobId));
+      toast.success("Image deleted");
+    } catch {
+      toast.error("Failed to delete image");
+    }
   }
 
   useEffect(() => {
@@ -125,6 +141,10 @@ export default function LibraryPage() {
           <TabsTrigger value="videos" className="gap-2">
             <Video className="h-4 w-4" />
             Videos ({videos.length})
+          </TabsTrigger>
+          <TabsTrigger value="images" className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            Images ({images.length})
           </TabsTrigger>
           <TabsTrigger value="avatars" className="gap-2">
             <ImageIcon className="h-4 w-4" />
@@ -211,6 +231,77 @@ export default function LibraryPage() {
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Images */}
+        <TabsContent value="images" className="mt-4">
+          {images.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Sparkles className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <p className="text-lg font-medium">No images yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Generate images from{" "}
+                  <Link href="/create/studio" className="underline">
+                    Gemini Studio
+                  </Link>
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {images.map((img) => {
+                const imgUrl = img.url.startsWith("http")
+                  ? img.url
+                  : `${API_URL}${img.url}`;
+                return (
+                  <Card key={img.path} className="overflow-hidden group">
+                    <Link href={img.job_id ? `/jobs/${img.job_id}` : "#"}>
+                      <div className="aspect-square bg-muted overflow-hidden">
+                        <img
+                          src={imgUrl}
+                          alt={img.filename}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    </Link>
+                    <CardContent className="p-3">
+                      <p className="text-xs font-medium truncate">
+                        {img.filename}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {(img.size_bytes / 1024).toFixed(0)} KB
+                      </p>
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 h-7 text-xs"
+                          asChild
+                        >
+                          <a href={imgUrl} download>
+                            <Download className="mr-1 h-3 w-3" />
+                            Download
+                          </a>
+                        </Button>
+                        {img.job_id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => handleDeleteImage(img.job_id!)}
+                            aria-label="Delete image"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

@@ -278,6 +278,7 @@ export interface AssetItem {
   url: string;
   size_bytes: number;
   modified: number;
+  job_id?: string;
 }
 
 export interface Voice {
@@ -314,6 +315,15 @@ export async function getVideos() {
 
 export async function deleteVideo(jobId: string) {
   await api.delete(`/assets/videos/${jobId}`);
+}
+
+export async function getImages() {
+  const { data } = await api.get<{ images: AssetItem[] }>("/assets/images");
+  return data.images;
+}
+
+export async function deleteImage(jobId: string) {
+  await api.delete(`/assets/images/${jobId}`);
 }
 
 // ── Export ───────────────────────────────────────────────────────────────────
