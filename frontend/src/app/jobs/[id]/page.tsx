@@ -30,6 +30,38 @@ const WORKFLOW_LABELS: Record<string, string> = {
   v2v: "Video Transform",
   extend: "Video Extend",
   director: "AI Director",
+  gemini_image: "Gemini Image",
+  gemini_image_edit: "Gemini Image Edit",
+  gemini_video: "Veo 3.1 Video",
+};
+
+const IMAGE_WORKFLOWS = new Set(["gemini_image", "gemini_image_edit"]);
+
+const ERROR_CODE_MESSAGES: Record<string, { title: string; hint: string }> = {
+  gemini_safety: {
+    title: "Blocked by safety filter",
+    hint: "Gemini declined this prompt or the output tripped a safety rule. Try rephrasing more concretely and avoiding sensitive content.",
+  },
+  gemini_quota: {
+    title: "Provider quota exceeded",
+    hint: "Daily or monthly Gemini quota reached. Retry tomorrow or request a quota increase.",
+  },
+  gemini_rate_limit: {
+    title: "Rate limit hit",
+    hint: "You've submitted too many requests in a short window. Wait a minute and try again.",
+  },
+  gemini_degraded: {
+    title: "Provider temporarily degraded",
+    hint: "Gemini is returning errors. The circuit breaker will reset automatically — retry in ~2 minutes.",
+  },
+  gemini_invalid_input: {
+    title: "Invalid input",
+    hint: "Gemini rejected the request. Check the prompt, image, and aspect ratio.",
+  },
+  gemini_transient: {
+    title: "Temporary error",
+    hint: "Transient provider issue. Retry the job.",
+  },
 };
 
 const STATUS_CONFIG = {
@@ -169,37 +201,54 @@ export default function JobDetailPage() {
         </Card>
       )}
 
-      {/* Video Player */}
+      {/* Output Viewer */}
       {job.status === "completed" && downloadUrl && (
         <Card className="overflow-hidden">
-          <div className="aspect-video bg-black flex items-center justify-center">
-            <video
-              src={downloadUrl}
-              controls
-              className="w-full h-full"
-              poster=""
-            >
-              <track kind="captions" />
-            </video>
-          </div>
+          {IMAGE_WORKFLOWS.has(job.workflow) ? (
+            <div className="bg-black flex items-center justify-center">
+              <img
+                src={downloadUrl}
+                alt="Generated output"
+                className="max-h-[70vh] w-auto"
+              />
+            </div>
+          ) : (
+            <div className="aspect-video bg-black flex items-center justify-center">
+              <video
+                src={downloadUrl}
+                controls
+                className="w-full h-full"
+                poster=""
+              >
+                <track kind="captions" />
+              </video>
+            </div>
+          )}
           <CardContent className="py-4">
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap items-center">
               <Button asChild>
                 <a href={downloadUrl} download>
                   <Download className="mr-2 h-4 w-4" />
                   Download
                 </a>
               </Button>
-              <Button
-                variant="outline"
-                disabled={exporting}
-                onClick={() =>
-                  handleExport(["tiktok", "youtube", "instagram"])
-                }
-              >
-                <Share2 className="mr-2 h-4 w-4" />
-                {exporting ? "Exporting..." : "Export All Formats"}
-              </Button>
+              {!IMAGE_WORKFLOWS.has(job.workflow) && (
+                <Button
+                  variant="outline"
+                  disabled={exporting}
+                  onClick={() =>
+                    handleExport(["tiktok", "youtube", "instagram"])
+                  }
+                >
+                  <Share2 className="mr-2 h-4 w-4" />
+                  {exporting ? "Exporting..." : "Export All Formats"}
+                </Button>
+              )}
+              {job.cost_usd != null && (
+                <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                  Provider cost: ${job.cost_usd.toFixed(4)}
+                </span>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -208,9 +257,25 @@ export default function JobDetailPage() {
       {/* Error */}
       {job.status === "failed" && job.error && (
         <Card className="border-destructive/50">
-          <CardContent className="py-4">
-            <p className="text-sm font-medium text-destructive">Error</p>
-            <p className="text-sm text-muted-foreground mt-1">{job.error}</p>
+          <CardContent className="py-4 space-y-2">
+            {job.error_code && ERROR_CODE_MESSAGES[job.error_code] ? (
+              <>
+                <p className="text-sm font-medium text-destructive">
+                  {ERROR_CODE_MESSAGES[job.error_code].title}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {ERROR_CODE_MESSAGES[job.error_code].hint}
+                </p>
+                <p className="text-xs text-muted-foreground/70 mt-2 font-mono">
+                  {job.error}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-destructive">Error</p>
+                <p className="text-sm text-muted-foreground">{job.error}</p>
+              </>
+            )}
           </CardContent>
         </Card>
       )}

@@ -184,11 +184,66 @@ export async function generateDirector(params: DirectorParams) {
   return data;
 }
 
+// ── Gemini (Veo 3.1 + Nano Banana) ─────────────────────────────────────────
+
+export interface GeminiImageParams {
+  prompt: string;
+  reference_image_paths?: string[];
+  aspect_ratio?: string;
+}
+
+export interface GeminiImageEditParams {
+  prompt: string;
+  source_image_path: string;
+  mask_image_path?: string | null;
+}
+
+export interface GeminiVideoParams {
+  prompt: string;
+  source_image_path?: string | null;
+  duration_sec?: number;
+  aspect_ratio?: string;
+  resolution?: string;
+  generate_audio?: boolean;
+  negative_prompt?: string | null;
+}
+
+function makeIdempotencyKey(): string {
+  return (
+    (typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now().toString(36))
+  );
+}
+
+export async function generateGeminiImage(params: GeminiImageParams) {
+  const { data } = await api.post("/generate/gemini/image", params, {
+    headers: { "Idempotency-Key": makeIdempotencyKey() },
+  });
+  return data;
+}
+
+export async function generateGeminiImageEdit(params: GeminiImageEditParams) {
+  const { data } = await api.post("/generate/gemini/image/edit", params, {
+    headers: { "Idempotency-Key": makeIdempotencyKey() },
+  });
+  return data;
+}
+
+export async function generateGeminiVideo(params: GeminiVideoParams) {
+  const { data } = await api.post("/generate/gemini/video", params, {
+    headers: { "Idempotency-Key": makeIdempotencyKey() },
+  });
+  return data;
+}
+
 // ── Jobs ────────────────────────────────────────────────────────────────────
 
 export interface Job {
   id: string;
   workflow: string;
+  provider?: string;
+  model?: string;
   status: "queued" | "processing" | "completed" | "failed" | "cancelled";
   progress: number;
   step: string;
@@ -198,6 +253,8 @@ export interface Job {
   completed_at: string;
   output_path: string;
   error: string;
+  error_code?: string;
+  cost_usd?: number | null;
   download_url?: string;
 }
 

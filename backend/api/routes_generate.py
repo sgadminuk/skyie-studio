@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import uuid as uuid_mod
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Header, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+from config import settings
 from db.base import get_session
 from db.models import User
 from api.dependencies import get_current_user
 from services.job_queue import (
     create_job,
+    find_job_by_idempotency_key,
     run_talking_head_task, run_broll_task, run_full_production_task,
     run_shots_task, run_v2v_task, run_extend_task, run_director_task,
+    run_gemini_image_task, run_gemini_image_edit_task, run_gemini_video_task,
 )
 from services.credit_service import get_credit_cost, check_credits, reserve_credits
 
@@ -229,3 +232,159 @@ async def generate_director(
     await reserve_credits(session, user.id, cost, job_id=uuid_mod.UUID(job_id), description="AI Director generation")
     run_director_task.delay(job_id, params)
     return {"job_id": job_id, "workflow": "director", "status": "queued", "credits_used": cost}
+
+
+# ── Gemini (Veo 3.1 + Nano Banana) ─────────────────────────────────────────
+
+class GeminiImageRequest(BaseModel):
+    prompt: str = Field(..., min_length=1)
+    reference_image_paths: list[str] = Field(default_factory=list, max_length=10)
+    aspect_ratio: str = "1:1"
+
+
+class GeminiImageEditRequest(BaseModel):
+    prompt: str = Field(..., min_length=1)
+    source_image_path: str
+    mask_image_path: str | None = None
+
+
+class GeminiVideoRequest(BaseModel):
+    prompt: str = Field(..., min_length=1)
+    source_image_path: str | None = None
+    duration_sec: int = Field(default=8, ge=2, le=8)
+    aspect_ratio: str = "16:9"
+    resolution: str = "1080p"
+    generate_audio: bool = True
+    negative_prompt: str | None = None
+
+
+def _idempotent_response(existing: dict) -> dict:
+    return {
+        "job_id": existing["id"],
+        "workflow": existing["workflow"],
+        "provider": existing.get("provider", "gemini"),
+        "model": existing.get("model", ""),
+        "status": existing.get("status", "queued"),
+        "idempotent_replay": True,
+    }
+
+
+@router.post("/gemini/image")
+async def generate_gemini_image(
+    request: GeminiImageRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Nano Banana image generation — text-to-image and multi-image composition."""
+    if idempotency_key:
+        existing = find_job_by_idempotency_key(str(user.id), idempotency_key)
+        if existing:
+            return _idempotent_response(existing)
+
+    params = request.model_dump()
+    params["_user_id"] = str(user.id)
+
+    cost = get_credit_cost("gemini_image", params)
+    if not await check_credits(session, user.id, cost):
+        raise HTTPException(status_code=402, detail=f"Insufficient credits. Need {cost}, have {user.credits}")
+
+    job_id = create_job(
+        "gemini_image", params, user_id=str(user.id),
+        provider="gemini", model=settings.GEMINI_IMAGE_MODEL,
+        idempotency_key=idempotency_key,
+    )
+    await reserve_credits(
+        session, user.id, cost, job_id=uuid_mod.UUID(job_id),
+        description="Gemini image generation",
+    )
+    run_gemini_image_task.delay(job_id, params)
+    return {
+        "job_id": job_id,
+        "workflow": "gemini_image",
+        "provider": "gemini",
+        "model": settings.GEMINI_IMAGE_MODEL,
+        "status": "queued",
+        "credits_used": cost,
+    }
+
+
+@router.post("/gemini/image/edit")
+async def generate_gemini_image_edit(
+    request: GeminiImageEditRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Nano Banana image edit / inpaint."""
+    if idempotency_key:
+        existing = find_job_by_idempotency_key(str(user.id), idempotency_key)
+        if existing:
+            return _idempotent_response(existing)
+
+    params = request.model_dump()
+    params["_user_id"] = str(user.id)
+
+    cost = get_credit_cost("gemini_image_edit", params)
+    if not await check_credits(session, user.id, cost):
+        raise HTTPException(status_code=402, detail=f"Insufficient credits. Need {cost}, have {user.credits}")
+
+    job_id = create_job(
+        "gemini_image_edit", params, user_id=str(user.id),
+        provider="gemini", model=settings.GEMINI_IMAGE_MODEL,
+        idempotency_key=idempotency_key,
+    )
+    await reserve_credits(
+        session, user.id, cost, job_id=uuid_mod.UUID(job_id),
+        description="Gemini image edit",
+    )
+    run_gemini_image_edit_task.delay(job_id, params)
+    return {
+        "job_id": job_id,
+        "workflow": "gemini_image_edit",
+        "provider": "gemini",
+        "model": settings.GEMINI_IMAGE_MODEL,
+        "status": "queued",
+        "credits_used": cost,
+    }
+
+
+@router.post("/gemini/video")
+async def generate_gemini_video(
+    request: GeminiVideoRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Veo 3.1 video generation — T2V or I2V with full quality defaults."""
+    if idempotency_key:
+        existing = find_job_by_idempotency_key(str(user.id), idempotency_key)
+        if existing:
+            return _idempotent_response(existing)
+
+    params = request.model_dump()
+    params["_user_id"] = str(user.id)
+
+    cost = get_credit_cost("gemini_video", params)
+    if not await check_credits(session, user.id, cost):
+        raise HTTPException(status_code=402, detail=f"Insufficient credits. Need {cost}, have {user.credits}")
+
+    job_id = create_job(
+        "gemini_video", params, user_id=str(user.id),
+        provider="gemini", model=settings.GEMINI_VEO_MODEL,
+        idempotency_key=idempotency_key,
+    )
+    await reserve_credits(
+        session, user.id, cost, job_id=uuid_mod.UUID(job_id),
+        description=f"Veo 3.1 video ({request.duration_sec}s @ {request.resolution})",
+    )
+    run_gemini_video_task.delay(job_id, params)
+    return {
+        "job_id": job_id,
+        "workflow": "gemini_video",
+        "provider": "gemini",
+        "model": settings.GEMINI_VEO_MODEL,
+        "status": "queued",
+        "credits_used": cost,
+        "estimated_duration_seconds": 180,
+    }

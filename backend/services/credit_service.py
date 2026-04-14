@@ -19,23 +19,58 @@ CREDIT_COSTS: dict[str, int] = {
     "v2v": 15,
     "extend": 10,
     "director": 30,
+    # Gemini (Nano Banana) image — flat per call, quality-first
+    "gemini_image": 8,
+    "gemini_image_edit": 10,
+    # Gemini (Veo 3.1) video — computed below from duration/resolution/audio
+    "gemini_video": 0,
 }
+
+# ── Veo 3.1 per-second credit rates ─────────────────────────────────────────
+# Tuned so 1 credit ≈ $0.01 USD of Google spend. Adjust together with
+# gemini_service.VEO_3_1_PRICE_PER_SEC_* if Google revises pricing.
+VEO_CREDITS_PER_SEC_AUDIO_720P = 40   # $0.40/sec @ 1× → 40 credits
+VEO_CREDITS_PER_SEC_SILENT_720P = 20  # $0.20/sec @ 1× → 20 credits
+VEO_RESOLUTION_MULT: dict[str, float] = {
+    "720p": 1.0,
+    "1080p": 1.5,
+}
+
+
+def _gemini_video_credits(params: dict) -> int:
+    duration = float(params.get("duration_sec") or 8)
+    resolution = str(params.get("resolution") or "1080p").lower()
+    audio = bool(params.get("generate_audio", True))
+
+    base_per_sec = (
+        VEO_CREDITS_PER_SEC_AUDIO_720P if audio else VEO_CREDITS_PER_SEC_SILENT_720P
+    )
+    mult = VEO_RESOLUTION_MULT.get(resolution, 1.5)
+    # Always round up — never under-charge.
+    import math
+    return int(math.ceil(duration * base_per_sec * mult))
 
 
 def get_credit_cost(workflow: str, params: dict | None = None) -> int:
     """Calculate the credit cost for a given workflow.
 
-    The base cost comes from CREDIT_COSTS. Additional params may adjust
-    the price in the future (e.g. resolution, duration multipliers).
+    The base cost comes from CREDIT_COSTS. Gemini video is computed from
+    duration × resolution × audio so users pay for exactly what Veo renders.
     """
     base = CREDIT_COSTS.get(workflow, 10)
 
     if params:
-        # B-roll cost scales with scene count beyond the first
         if workflow == "broll":
             scenes = params.get("scenes", [])
             if len(scenes) > 1:
                 base += (len(scenes) - 1) * 5
+        elif workflow == "gemini_video":
+            return _gemini_video_credits(params)
+        elif workflow == "gemini_image":
+            refs = params.get("reference_image_paths") or []
+            # Multi-image composition costs more tokens on Nano Banana
+            if len(refs) > 1:
+                base += (len(refs) - 1) * 2
 
     return base
 

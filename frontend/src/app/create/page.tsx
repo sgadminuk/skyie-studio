@@ -1,9 +1,19 @@
 import Link from "next/link";
-import { Mic, Film, Video, ArrowRight, ImagePlus, Sparkles, RefreshCw } from "lucide-react";
+import { Mic, Film, Video, ArrowRight, ImagePlus, Sparkles, RefreshCw, Layers } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const WORKFLOWS = [
+  {
+    href: "/create/studio",
+    icon: Layers,
+    title: "Gemini Studio",
+    badge: "Premium",
+    description:
+      "Generate premium images and videos with Veo 3.1 and Nano Banana. Multi-image composition, text-to-video with synchronized audio, inpainting, and more — all in one unified canvas.",
+    features: ["Veo 3.1 video (1080p + audio)", "Nano Banana image gen", "Up to 10-image composition", "Image editing + inpainting"],
+    credits: "8–480 credits",
+  },
   {
     href: "/create/director",
     icon: Sparkles,

@@ -80,6 +80,8 @@ class Job(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     workflow: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(30), default="gpu", nullable=False, index=True)
+    model: Mapped[Optional[str]] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(
         String(20), default="queued", nullable=False, index=True
     )
@@ -88,6 +90,9 @@ class Job(Base):
     params: Mapped[Optional[dict]] = mapped_column(JSONB)
     output_path: Mapped[Optional[str]] = mapped_column(String(512))
     error: Mapped[Optional[str]] = mapped_column(Text)
+    error_code: Mapped[Optional[str]] = mapped_column(String(50))
+    cost_usd: Mapped[Optional[float]] = mapped_column(Float)
+    idempotency_key: Mapped[Optional[str]] = mapped_column(String(128), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )

@@ -85,6 +85,7 @@ jobs:
           MAIELR_API_KEY: ${{ secrets.MAIELR_API_KEY }}
           MAIELR_WEBHOOK_SECRET: ${{ secrets.MAIELR_WEBHOOK_SECRET }}
           GPU_REGISTRATION_KEY: ${{ secrets.GPU_REGISTRATION_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << ENDSSH
             set -e
@@ -104,6 +105,7 @@ jobs:
             grep -q "^MAIELR_API_KEY=" .env 2>/dev/null && sed -i "s|^MAIELR_API_KEY=.*|MAIELR_API_KEY=${MAIELR_API_KEY}|" .env || echo "MAIELR_API_KEY=${MAIELR_API_KEY}" >> .env
             grep -q "^MAIELR_WEBHOOK_SECRET=" .env 2>/dev/null && sed -i "s|^MAIELR_WEBHOOK_SECRET=.*|MAIELR_WEBHOOK_SECRET=${MAIELR_WEBHOOK_SECRET}|" .env || echo "MAIELR_WEBHOOK_SECRET=${MAIELR_WEBHOOK_SECRET}" >> .env
             grep -q "^GPU_REGISTRATION_KEY=" .env 2>/dev/null && sed -i "s|^GPU_REGISTRATION_KEY=.*|GPU_REGISTRATION_KEY=${GPU_REGISTRATION_KEY}|" .env || echo "GPU_REGISTRATION_KEY=${GPU_REGISTRATION_KEY}" >> .env
+            grep -q "^GEMINI_API_KEY=" .env 2>/dev/null && sed -i "s|^GEMINI_API_KEY=.*|GEMINI_API_KEY=${GEMINI_API_KEY}|" .env || echo "GEMINI_API_KEY=${GEMINI_API_KEY}" >> .env
 
             # Run deployment script
             echo "Running deployment..."

@@ -66,6 +66,22 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4o-mini"
 
+    # Gemini (Veo 3.1 video + Nano Banana image) — max quality defaults, no compromises
+    GEMINI_API_KEY: str = ""
+    GEMINI_VEO_MODEL: str = "veo-3.1-generate-preview"
+    GEMINI_IMAGE_MODEL: str = "gemini-2.5-flash-image"
+    GEMINI_DEFAULT_VIDEO_RESOLUTION: str = "1080p"
+    GEMINI_DEFAULT_VIDEO_DURATION: int = 8
+    GEMINI_DEFAULT_VIDEO_ASPECT: str = "16:9"
+    GEMINI_DEFAULT_GENERATE_AUDIO: bool = True
+    GEMINI_REQUEST_TIMEOUT: int = 900
+    GEMINI_POLL_INTERVAL_SEC: int = 8
+    GEMINI_MAX_POLL_ATTEMPTS: int = 120
+    GEMINI_USER_RATE_PER_MIN: int = 30
+    GEMINI_BREAKER_FAIL_THRESHOLD: int = 5
+    GEMINI_BREAKER_WINDOW_SEC: int = 60
+    GEMINI_BREAKER_COOLDOWN_SEC: int = 120
+
     # Cloudflare R2
     R2_ACCOUNT_ID: str = ""
     R2_ACCESS_KEY_ID: str = ""

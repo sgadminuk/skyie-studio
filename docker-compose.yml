@@ -79,6 +79,7 @@ services:
       GPU_HEARTBEAT_TIMEOUT: "120"
       MAIELR_API_KEY: ${MAIELR_API_KEY:-}
       MAIELR_WEBHOOK_SECRET: ${MAIELR_WEBHOOK_SECRET:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -139,6 +140,7 @@ services:
       TEMP_PATH: /app/temp
       OUTPUT_PATH: /app/assets/generated
       GPU_API_KEY: ${GPU_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

@@ -75,7 +75,15 @@ class JobStatus(str, Enum):
 
 # ── Job CRUD ─────────────────────────────────────────────────────────────────
 
-def create_job(workflow: str, params: dict, user_id: str | None = None) -> str:
+def create_job(
+    workflow: str,
+    params: dict,
+    user_id: str | None = None,
+    *,
+    provider: str = "gpu",
+    model: str | None = None,
+    idempotency_key: str | None = None,
+) -> str:
     """Create a new job in PostgreSQL and cache in Redis."""
     from db.models import Job
 
@@ -88,11 +96,14 @@ def create_job(workflow: str, params: dict, user_id: str | None = None) -> str:
             id=uuid.UUID(job_id),
             user_id=uuid.UUID(user_id) if user_id else None,
             workflow=workflow,
+            provider=provider,
+            model=model,
             status=JobStatus.QUEUED.value,
             progress=0,
             step="Queued",
             params=params,
             created_at=now,
+            idempotency_key=idempotency_key,
         )
         session.add(job)
         session.commit()
@@ -101,6 +112,8 @@ def create_job(workflow: str, params: dict, user_id: str | None = None) -> str:
     redis_data = {
         "id": job_id,
         "workflow": workflow,
+        "provider": provider,
+        "model": model or "",
         "status": JobStatus.QUEUED.value,
         "progress": 0,
         "step": "Queued",
@@ -110,11 +123,27 @@ def create_job(workflow: str, params: dict, user_id: str | None = None) -> str:
         "completed_at": "",
         "output_path": "",
         "error": "",
+        "error_code": "",
+        "cost_usd": "",
     }
     redis_client.hset(f"{JOB_PREFIX}{job_id}", mapping=redis_data)
     redis_client.expire(f"{JOB_PREFIX}{job_id}", JOB_TTL)
 
     return job_id
+
+
+def find_job_by_idempotency_key(user_id: str, key: str) -> dict | None:
+    """Return an existing job for (user_id, idempotency_key) or None."""
+    from db.models import Job
+
+    with Session(_sync_engine) as session:
+        job = session.execute(
+            select(Job).where(
+                Job.user_id == uuid.UUID(user_id),
+                Job.idempotency_key == key,
+            ).order_by(desc(Job.created_at)).limit(1)
+        ).scalar_one_or_none()
+        return _job_to_dict(job) if job else None
 
 
 def get_job(job_id: str) -> dict | None:
@@ -198,6 +227,8 @@ def _job_to_dict(job) -> dict:
     return {
         "id": str(job.id),
         "workflow": job.workflow,
+        "provider": getattr(job, "provider", None) or "gpu",
+        "model": getattr(job, "model", None) or "",
         "status": job.status,
         "progress": job.progress or 0,
         "step": job.step or "Unknown",
@@ -207,6 +238,8 @@ def _job_to_dict(job) -> dict:
         "completed_at": job.completed_at.isoformat() if job.completed_at else "",
         "output_path": job.output_path or "",
         "error": job.error or "",
+        "error_code": getattr(job, "error_code", None) or "",
+        "cost_usd": getattr(job, "cost_usd", None),
     }
 
 
@@ -261,6 +294,27 @@ def run_director_task(self, job_id: str, params: dict):
     _run_workflow(job_id, params, execute_director)
 
 
+@celery_app.task(name="skyie.run_gemini_image", bind=True)
+def run_gemini_image_task(self, job_id: str, params: dict):
+    """Generate an image via Gemini 2.5 Flash Image (Nano Banana)."""
+    from workflows.gemini import execute_gemini_image
+    _run_workflow(job_id, params, execute_gemini_image)
+
+
+@celery_app.task(name="skyie.run_gemini_image_edit", bind=True)
+def run_gemini_image_edit_task(self, job_id: str, params: dict):
+    """Edit an existing image via Nano Banana."""
+    from workflows.gemini import execute_gemini_image_edit
+    _run_workflow(job_id, params, execute_gemini_image_edit)
+
+
+@celery_app.task(name="skyie.run_gemini_video", bind=True)
+def run_gemini_video_task(self, job_id: str, params: dict):
+    """Generate a video via Veo 3.1 (T2V or I2V)."""
+    from workflows.gemini import execute_gemini_video
+    _run_workflow(job_id, params, execute_gemini_video)
+
+
 def _run_workflow(job_id: str, params: dict, workflow_fn):
     """Common wrapper for running any workflow."""
     update_job(job_id, status=JobStatus.PROCESSING, started_at=time.time(), step="Starting")
@@ -280,10 +334,12 @@ def _run_workflow(job_id: str, params: dict, workflow_fn):
         )
     except Exception as e:
         logger.exception(f"Job {job_id} failed: {e}")
+        error_code = getattr(e, "code", None) or type(e).__name__
         update_job(
             job_id,
             status=JobStatus.FAILED,
             step="Failed",
             completed_at=time.time(),
             error=str(e),
+            error_code=error_code,
         )
