@@ -361,6 +361,112 @@ export async function deleteProject(id: string) {
   await api.delete(`/projects/${id}`);
 }
 
+// ── Brand Kit ───────────────────────────────────────────────────────────────
+
+export interface BrandProfile {
+  id: string;
+  name: string;
+  tagline?: string | null;
+  description?: string | null;
+  website_url?: string | null;
+  logo_url?: string | null;
+  primary_color?: string | null;
+  secondary_color?: string | null;
+  accent_color?: string | null;
+  fonts?: unknown;
+  tone_of_voice?: string | null;
+  target_audience?: string | null;
+  industry?: string | null;
+  guidelines?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BrandScrapeResult {
+  _scrape_id: string;
+  name: string;
+  tagline?: string | null;
+  description?: string | null;
+  website_url: string;
+  logo_path?: string | null;
+  logo_url?: string | null;
+  logo_candidates?: string[];
+  primary_color?: string | null;
+  secondary_color?: string | null;
+  accent_color?: string | null;
+  tone_of_voice?: string | null;
+  target_audience?: string | null;
+  industry?: string | null;
+  guidelines?: string | null;
+}
+
+export interface BrandProfileInput {
+  name: string;
+  tagline?: string | null;
+  description?: string | null;
+  website_url?: string | null;
+  primary_color?: string | null;
+  secondary_color?: string | null;
+  accent_color?: string | null;
+  fonts?: unknown;
+  tone_of_voice?: string | null;
+  target_audience?: string | null;
+  industry?: string | null;
+  guidelines?: string | null;
+  pending_logo_path?: string | null;
+}
+
+export async function getBrandProfiles() {
+  const { data } = await api.get<{ brands: BrandProfile[] }>("/brand");
+  return data.brands;
+}
+
+export async function getBrandProfile(id: string) {
+  const { data } = await api.get<BrandProfile>(`/brand/${id}`);
+  return data;
+}
+
+export async function createBrandProfile(payload: BrandProfileInput) {
+  const { data } = await api.post<BrandProfile>("/brand", payload);
+  return data;
+}
+
+export async function updateBrandProfile(id: string, payload: BrandProfileInput) {
+  const { data } = await api.put<BrandProfile>(`/brand/${id}`, payload);
+  return data;
+}
+
+export async function deleteBrandProfile(id: string) {
+  await api.delete(`/brand/${id}`);
+}
+
+export async function scrapeBrandFromUrl(url: string) {
+  const { data } = await api.post<BrandScrapeResult>("/brand/scrape", { url }, { timeout: 30000 });
+  return data;
+}
+
+export async function uploadBrandLogo(id: string, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post<BrandProfile>(`/brand/${id}/logo`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 60000,
+  });
+  return data;
+}
+
+export async function uploadScrapeLogo(scrapeId: string, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("scrape_id", scrapeId);
+  const { data } = await api.post<{ pending_logo_path: string; logo_url: string }>(
+    "/brand/scrape/logo",
+    form,
+    { headers: { "Content-Type": "multipart/form-data" }, timeout: 60000 },
+  );
+  return data;
+}
+
 // ── Billing ─────────────────────────────────────────────────────────────────
 
 export async function getCreditCosts() {

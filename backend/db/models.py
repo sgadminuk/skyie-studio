@@ -269,6 +269,39 @@ class ApiKey(Base):
     )
 
 
+class BrandProfile(Base):
+    """Brand kit — logo + voice/tone/colors used to steer generation output."""
+
+    __tablename__ = "brand_profiles"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    tagline: Mapped[Optional[str]] = mapped_column(String(500))
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    website_url: Mapped[Optional[str]] = mapped_column(String(1024))
+    logo_path: Mapped[Optional[str]] = mapped_column(String(1024))
+    primary_color: Mapped[Optional[str]] = mapped_column(String(16))
+    secondary_color: Mapped[Optional[str]] = mapped_column(String(16))
+    accent_color: Mapped[Optional[str]] = mapped_column(String(16))
+    fonts: Mapped[Optional[dict]] = mapped_column(JSONB)
+    tone_of_voice: Mapped[Optional[str]] = mapped_column(Text)
+    target_audience: Mapped[Optional[str]] = mapped_column(Text)
+    industry: Mapped[Optional[str]] = mapped_column(String(255))
+    guidelines: Mapped[Optional[str]] = mapped_column(Text)
+    extra: Mapped[Optional[dict]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class WebhookEndpoint(Base):
     """Webhook endpoint for event notifications."""
 

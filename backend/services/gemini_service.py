@@ -304,6 +304,61 @@ class GeminiService:
             cost_usd=estimate_video_cost_usd(duration, audio),
         )
 
+    # ── Structured text ──────────────────────────────────────────────────
+
+    async def generate_structured_json(
+        self,
+        prompt: str,
+        *,
+        schema: dict | None = None,
+        model: str = "gemini-2.5-flash",
+        user_id: str | None = None,
+    ) -> dict:
+        """Text-only Gemini call that returns a JSON object.
+
+        Uses response_mime_type=application/json so the model is forced to
+        emit valid JSON. If a schema is passed it's wired through so fields
+        are typed. No safety-first retry — caller handles errors.
+        """
+        from google.genai import types  # type: ignore
+
+        self._preflight(user_id)
+        config_kwargs: dict[str, Any] = {"response_mime_type": "application/json"}
+        if schema is not None:
+            config_kwargs["response_schema"] = schema
+        config = types.GenerateContentConfig(**config_kwargs)
+
+        result = await self._retry(
+            lambda: asyncio.to_thread(
+                self._client.models.generate_content,
+                model=model,
+                contents=prompt,
+                config=config,
+            ),
+            op="generate_structured_json",
+        )
+
+        self._check_safety_block(result)
+        text = getattr(result, "text", None)
+        if not text:
+            # Fallback: walk candidates → parts → text
+            for cand in getattr(result, "candidates", []) or []:
+                for part in getattr(getattr(cand, "content", None), "parts", []) or []:
+                    t = getattr(part, "text", None)
+                    if t:
+                        text = t
+                        break
+                if text:
+                    break
+        if not text:
+            raise GeminiTransientError("Gemini returned no text", retryable=True)
+
+        import json as _json
+        try:
+            return _json.loads(text)
+        except _json.JSONDecodeError as e:
+            raise GeminiTransientError(f"Gemini JSON parse failed: {e}", retryable=False)
+
     # ── Internals ────────────────────────────────────────────────────────
 
     def _preflight(self, user_id: str | None):

@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Mock mode: {settings.MOCK_MODE}")
 
     # Ensure storage directories exist
-    for path in [settings.ASSETS_PATH, settings.TEMP_PATH, settings.OUTPUT_PATH]:
+    for path in [settings.ASSETS_PATH, settings.TEMP_PATH, settings.OUTPUT_PATH, settings.BRANDS_PATH]:
         Path(path).mkdir(parents=True, exist_ok=True)
     (settings.ASSETS_PATH / "avatars").mkdir(exist_ok=True)
     (settings.ASSETS_PATH / "voices").mkdir(exist_ok=True)
@@ -76,6 +76,7 @@ from api.routes_admin import router as admin_router
 from api.routes_api_keys import router as api_keys_router
 from api.routes_gpu import router_internal as gpu_internal_router, router_public as gpu_status_router
 from api.routes_webhooks import router as webhooks_router
+from api.routes_brand import router as brand_router
 
 app.include_router(health_router)
 app.include_router(auth_router)
@@ -91,3 +92,4 @@ app.include_router(api_keys_router)
 app.include_router(gpu_internal_router)
 app.include_router(gpu_status_router)
 app.include_router(webhooks_router)
+app.include_router(brand_router)

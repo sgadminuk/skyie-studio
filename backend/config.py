@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     ASSETS_PATH: Path = Path("./assets")
     TEMP_PATH: Path = Path("./temp")
     OUTPUT_PATH: Path = Path("./assets/generated")
+    BRANDS_PATH: Path = Path("./assets/brands")
 
     # GPU Inference Server
     GPU_SERVER_URL: str = ""

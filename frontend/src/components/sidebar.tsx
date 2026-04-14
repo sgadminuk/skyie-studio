@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Sparkles,
   Layers,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/lib/store";
@@ -28,6 +29,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/create", label: "Create", icon: Wand2 },
+  { href: "/brand", label: "Brand Kit", icon: Palette },
   { href: "/library", label: "Library", icon: Library },
   { href: "/projects", label: "Projects", icon: FolderOpen },
   { href: "/settings", label: "Settings", icon: Settings },
