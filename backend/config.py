@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from pathlib import Path
+from typing import Any
 
 
 class Settings(BaseSettings):
@@ -91,6 +92,21 @@ class Settings(BaseSettings):
     R2_ENDPOINT: str = ""
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+    def model_post_init(self, __context: Any) -> None:
+        """Make derived storage paths absolute and rooted under ASSETS_PATH.
+
+        Without this, a deployment that only sets ASSETS_PATH (which docker-
+        compose does) leaves OUTPUT_PATH and BRANDS_PATH at their relative
+        defaults — the worker writes to ./assets/brands while ASSETS_PATH is
+        /app/assets, so get_asset_url() can't compute a relative URL and
+        falls back to the bare filename.
+        """
+        assets = self.ASSETS_PATH.resolve() if self.ASSETS_PATH.is_absolute() else self.ASSETS_PATH
+        if not self.OUTPUT_PATH.is_absolute():
+            self.OUTPUT_PATH = assets / "generated"
+        if not self.BRANDS_PATH.is_absolute():
+            self.BRANDS_PATH = assets / "brands"
 
 
 settings = Settings()
