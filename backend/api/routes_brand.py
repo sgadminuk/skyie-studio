@@ -18,6 +18,7 @@ from db.models import BrandProfile, User
 from services.brand_scrape_service import (
     BrandScrapeError,
     scrape_brand_from_url,
+    select_scrape_logo_candidate,
 )
 from services.storage_service import get_asset_url
 
@@ -64,6 +65,11 @@ class BrandProfileIn(BaseModel):
 
 class ScrapeRequest(BaseModel):
     url: str = Field(..., min_length=1)
+
+
+class SelectLogoRequest(BaseModel):
+    scrape_id: str
+    candidate_url: str
 
 
 def _to_out(brand: BrandProfile) -> dict[str, Any]:
@@ -268,6 +274,21 @@ async def upload_brand_logo(
     await session.commit()
     await session.refresh(brand)
     return _to_out(brand)
+
+
+@router.post("/scrape/select-logo")
+async def select_logo_candidate(
+    payload: SelectLogoRequest,
+    user: User = Depends(get_current_user),
+):
+    """Switch the scrape's staged logo to a different candidate URL."""
+    try:
+        result = await select_scrape_logo_candidate(
+            payload.scrape_id, payload.candidate_url
+        )
+    except BrandScrapeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
 
 
 @router.post("/scrape/logo")

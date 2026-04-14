@@ -135,55 +135,213 @@ async def _download_logo(logo_url: str, dest_dir: Path) -> Optional[str]:
 
 
 def _pick_logo_candidates(soup: BeautifulSoup, base_url: str) -> list[str]:
-    """Return logo URL candidates ordered best → worst."""
-    candidates: list[tuple[int, str]] = []
+    """Return logo URL candidates ordered best → worst.
 
-    def add(score: int, value: Optional[str]):
-        if value:
-            candidates.append((score, urljoin(base_url, value)))
+    Walks the entire document (not just <header>), scores by keyword hits in
+    src/alt/class/id/parent-class/aria-label, weights SVG and header/nav
+    ancestors, and falls back to <link rel="icon"> and OpenGraph images.
+    """
+    scored: dict[str, int] = {}
 
-    # Highest: explicit logo images inside <header>
-    header = soup.find("header") or soup
-    for img in header.find_all("img", limit=20):
-        alt = (img.get("alt") or "").lower()
-        cls = " ".join(img.get("class") or []).lower()
-        src = img.get("src") or img.get("data-src")
-        if not src:
-            continue
-        if "logo" in alt or "logo" in cls or "logo" in src.lower():
-            add(100, src)
-        else:
-            add(40, src)
+    def bump(value: Optional[str], score: int):
+        if not value:
+            return
+        url = urljoin(base_url, value)
+        if scored.get(url, -1) < score:
+            scored[url] = score
 
-    # Apple touch icon — usually a solid logo
+    # ── 1. <link rel="..."> icons ────────────────────────────────────
     for link in soup.find_all("link", rel=True):
         rel = " ".join(link.get("rel") or []).lower()
+        type_attr = (link.get("type") or "").lower()
+        sizes_attr = (link.get("sizes") or "").lower()
         href = link.get("href")
         if not href:
             continue
+
+        # SVG favicon is almost always the real wordmark/logomark → top priority
+        if "icon" in rel and "svg" in type_attr:
+            bump(href, 220)
+            continue
+
         if "apple-touch-icon" in rel:
-            add(90, href)
+            size_score = 0
+            if "180" in sizes_attr:
+                size_score = 15
+            elif "152" in sizes_attr:
+                size_score = 10
+            elif "120" in sizes_attr:
+                size_score = 5
+            bump(href, 150 + size_score)
         elif "mask-icon" in rel:
-            add(80, href)
-        elif "icon" in rel and "shortcut" not in rel:
-            add(60, href)
+            bump(href, 140)
+        elif rel.strip() == "icon":
+            if "512" in sizes_attr:
+                bump(href, 170)
+            elif "192" in sizes_attr:
+                bump(href, 150)
+            elif "96" in sizes_attr:
+                bump(href, 90)
+            elif "32" in sizes_attr or "16" in sizes_attr:
+                bump(href, 60)
+            else:
+                bump(href, 110)
         elif "shortcut icon" in rel:
-            add(50, href)
+            bump(href, 55)
 
-    # OpenGraph image (often a banner, not a logo — still useful fallback)
-    og = soup.find("meta", property="og:image")
-    if og and og.get("content"):
-        add(30, og["content"])
+    # ── 2. <img> tags across the whole document ─────────────────────
+    for img in soup.find_all("img", limit=400):
+        src = (
+            img.get("src")
+            or img.get("data-src")
+            or img.get("data-lazy-src")
+            or img.get("data-original")
+        )
+        if not src:
+            continue
+        # Skip obvious data-URIs — not useful as logo candidates
+        if src.startswith("data:"):
+            continue
 
-    # Dedupe while preserving order
-    candidates.sort(key=lambda p: p[0], reverse=True)
-    seen: set[str] = set()
-    out: list[str] = []
-    for _, url in candidates:
-        if url not in seen:
-            seen.add(url)
-            out.append(url)
-    return out[:10]
+        alt = (img.get("alt") or "").lower()
+        cls = " ".join(img.get("class") or []).lower()
+        img_id = (img.get("id") or "").lower()
+        aria = (img.get("aria-label") or "").lower()
+        src_l = src.lower()
+
+        parent_cls = ""
+        ancestor_tags: list[str] = []
+        node = img.parent
+        depth = 0
+        while node is not None and depth < 6:
+            name = getattr(node, "name", None)
+            if name:
+                ancestor_tags.append(name)
+            pcls = node.get("class") if hasattr(node, "get") else None
+            if pcls:
+                parent_cls += " " + " ".join(pcls).lower()
+            node = getattr(node, "parent", None)
+            depth += 1
+
+        haystack = f"{alt} {cls} {img_id} {aria} {parent_cls} {src_l}"
+
+        score = 0
+        if "wordmark" in haystack:
+            score += 180
+        if "logo" in haystack:
+            score += 160
+        if "brand" in haystack:
+            score += 70
+        if any(t in ancestor_tags for t in ("header", "nav")):
+            score += 50
+
+        # File-format boost
+        if src_l.endswith(".svg"):
+            score += 40
+        elif src_l.endswith(".png"):
+            score += 10
+
+        if score > 0:
+            bump(src, score)
+
+    # ── 3. Inline <svg> in <header>/<nav> ─────────────────────────────
+    # (We can't easily extract these — only flag the fact that they exist
+    # in extra metadata. Left for a future pass.)
+
+    # ── 4. Meta tags ──────────────────────────────────────────────────
+    # Some sites use <meta property="og:logo"> — rare but accurate.
+    og_logo = soup.find("meta", property="og:logo")
+    if og_logo and og_logo.get("content"):
+        bump(og_logo["content"], 130)
+
+    og_image = soup.find("meta", property="og:image")
+    if og_image and og_image.get("content"):
+        bump(og_image["content"], 35)
+
+    # Twitter image
+    tw_image = soup.find("meta", attrs={"name": "twitter:image"})
+    if tw_image and tw_image.get("content"):
+        bump(tw_image["content"], 30)
+
+    ranked = sorted(scored.items(), key=lambda p: p[1], reverse=True)
+    return [url for url, _ in ranked[:15]]
+
+
+def _extract_palette_from_image(image_path: str) -> dict[str, Optional[str]]:
+    """Return up to 3 dominant saturated colors from an image as hex strings."""
+    try:
+        from PIL import Image
+    except Exception:
+        return {}
+
+    p = Path(image_path)
+    ext = p.suffix.lower()
+    if ext in (".svg", ".ico"):
+        return {}
+    if not p.exists() or p.stat().st_size == 0:
+        return {}
+
+    try:
+        img = Image.open(image_path)
+        img = img.convert("RGBA")
+        img.thumbnail((400, 400))
+
+        # Flatten transparent pixels onto white so quantizer doesn't see alpha
+        bg = Image.new("RGB", img.size, (255, 255, 255))
+        alpha = img.split()[3] if img.mode == "RGBA" else None
+        bg.paste(img, mask=alpha)
+
+        quantized = bg.quantize(colors=12, method=Image.MEDIANCUT)
+        palette_raw = quantized.getpalette() or []
+        counts = sorted(quantized.getcolors() or [], reverse=True)
+
+        picked: list[str] = []
+        for count, idx in counts:
+            base = idx * 3
+            if base + 2 >= len(palette_raw):
+                continue
+            r, g, b = palette_raw[base], palette_raw[base + 1], palette_raw[base + 2]
+
+            max_c, min_c = max(r, g, b), min(r, g, b)
+            lum = (r + g + b) / 3.0
+            saturation = (max_c - min_c) / max_c if max_c else 0.0
+
+            # Skip near-white / near-black / near-gray — they are backgrounds
+            if lum > 240 or lum < 18:
+                continue
+            if saturation < 0.18:
+                continue
+
+            hex_color = f"#{r:02x}{g:02x}{b:02x}"
+            if hex_color in picked:
+                continue
+            picked.append(hex_color)
+            if len(picked) >= 3:
+                break
+
+        result: dict[str, Optional[str]] = {}
+        if picked:
+            result["primary_color"] = picked[0]
+        if len(picked) > 1:
+            result["secondary_color"] = picked[1]
+        if len(picked) > 2:
+            result["accent_color"] = picked[2]
+        return result
+    except Exception as e:
+        logger.warning("palette extraction failed for %s: %s", image_path, e)
+        return {}
+
+
+async def _download_og_image(soup: BeautifulSoup, base_url: str, dest_dir: Path) -> Optional[str]:
+    """Try to download og:image (or twitter:image) for richer color extraction."""
+    for prop in ("og:image:secure_url", "og:image"):
+        el = soup.find("meta", property=prop)
+        if el and el.get("content"):
+            return await _download_logo(urljoin(base_url, el["content"]), dest_dir)
+    el = soup.find("meta", attrs={"name": "twitter:image"})
+    if el and el.get("content"):
+        return await _download_logo(urljoin(base_url, el["content"]), dest_dir)
+    return None
 
 
 def _extract_colors(soup: BeautifulSoup) -> dict[str, Optional[str]]:
@@ -273,6 +431,21 @@ async def scrape_brand_from_url(
         if logo_path:
             break
 
+    # Download the hero/og:image separately — it's usually the richest source
+    # of brand colors (the logo itself may be a single solid color).
+    og_image_path = await _download_og_image(soup, final_url, scrape_dir)
+
+    # Populate the palette from whichever image exists. Prefer og:image (richer)
+    # and fall back to the logo. Any user-provided theme-color still wins.
+    palette: dict[str, Optional[str]] = {}
+    if og_image_path:
+        palette = _extract_palette_from_image(og_image_path)
+    if not palette and logo_path:
+        palette = _extract_palette_from_image(logo_path)
+    for key, value in palette.items():
+        if not colors.get(key) and value:
+            colors[key] = value
+
     # Gemini extraction
     llm_result: dict[str, Any] = {}
     try:
@@ -315,8 +488,8 @@ async def scrape_brand_from_url(
         "logo_url": get_asset_url(logo_path) if logo_path else None,
         "logo_candidates": logo_candidates,
         "primary_color": colors.get("primary_color"),
-        "secondary_color": None,
-        "accent_color": None,
+        "secondary_color": colors.get("secondary_color"),
+        "accent_color": colors.get("accent_color"),
         "fonts": None,
         "tone_of_voice": tone_of_voice,
         "target_audience": target_audience,
@@ -326,4 +499,34 @@ async def scrape_brand_from_url(
             "scraped_from": final_url,
             "llm_raw": llm_result,
         },
+    }
+
+
+async def select_scrape_logo_candidate(
+    scrape_id: str, candidate_url: str
+) -> dict[str, Any]:
+    """Download a specific candidate logo into an existing scrape dir.
+
+    Returns {pending_logo_path, logo_url} for the frontend to update the form.
+    """
+    safe_id = "".join(c for c in scrape_id if c.isalnum() or c in "_-")[:64]
+    if not safe_id:
+        raise BrandScrapeError("Invalid scrape_id")
+    dest_dir = Path(settings.BRANDS_PATH) / f"_scrape_{safe_id}"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    # Delete any prior logo files in the scrape dir so we don't collide
+    for existing in dest_dir.iterdir():
+        if existing.is_file() and existing.name.startswith("logo"):
+            try:
+                existing.unlink()
+            except Exception:
+                pass
+
+    logo_path = await _download_logo(candidate_url, dest_dir)
+    if not logo_path:
+        raise BrandScrapeError(f"Failed to download candidate: {candidate_url}")
+    return {
+        "pending_logo_path": logo_path,
+        "logo_url": get_asset_url(logo_path),
     }

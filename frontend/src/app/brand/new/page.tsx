@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Globe, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { ArrowLeft, Check, Globe, Loader2, Sparkles, Wand2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
 import {
   createBrandProfile,
   scrapeBrandFromUrl,
+  selectScrapeLogoCandidate,
   type BrandScrapeResult,
 } from "@/lib/api";
 import { toast } from "sonner";
@@ -29,6 +30,30 @@ export default function NewBrandPage() {
   const [scrapeResult, setScrapeResult] = useState<BrandScrapeResult | null>(null);
   const [initial, setInitial] = useState<BrandFormValues>({ name: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
+  const [switchingLogo, setSwitchingLogo] = useState(false);
+
+  async function pickLogoCandidate(candidateUrl: string) {
+    if (!scrapeResult) return;
+    setSwitchingLogo(true);
+    try {
+      const result = await selectScrapeLogoCandidate(
+        scrapeResult._scrape_id,
+        candidateUrl,
+      );
+      setInitial((prev) => ({
+        ...prev,
+        pending_logo_path: result.pending_logo_path,
+        logo_preview_url: result.logo_url,
+      }));
+      setSelectedCandidate(candidateUrl);
+      toast.success("Logo updated");
+    } catch {
+      toast.error("Could not fetch that logo candidate");
+    } finally {
+      setSwitchingLogo(false);
+    }
+  }
 
   async function runScrape() {
     if (!websiteUrl.trim()) {
@@ -54,6 +79,7 @@ export default function NewBrandPage() {
         pending_logo_path: result.logo_path || null,
         logo_preview_url: result.logo_url || null,
       });
+      setSelectedCandidate(result.logo_candidates?.[0] || null);
       toast.success("Brand profile scraped — review and save");
     } catch (err) {
       const anyErr = err as { response?: { data?: { detail?: string } } };
@@ -205,25 +231,81 @@ export default function NewBrandPage() {
       )}
 
       {mode === "scrape" && scrapeResult && (
-        <BrandForm
-          initial={initial}
-          scrapeId={scrapeResult._scrape_id}
-          submitLabel="Save Brand Profile"
-          submitting={submitting}
-          onSubmit={handleSave}
-          extraActions={
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setScrapeResult(null);
-                setWebsiteUrl("");
-              }}
-            >
-              Try another URL
-            </Button>
-          }
-        />
+        <>
+          {scrapeResult.logo_candidates && scrapeResult.logo_candidates.length > 1 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" /> Logo candidates
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  We picked the most likely logo, but here are the other candidates we found on the page. Click to swap.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  {scrapeResult.logo_candidates.map((url) => {
+                    const active = url === selectedCandidate;
+                    return (
+                      <button
+                        key={url}
+                        type="button"
+                        onClick={() => pickLogoCandidate(url)}
+                        disabled={switchingLogo || active}
+                        className={`relative aspect-square rounded-md border bg-muted flex items-center justify-center p-2 transition-all ${
+                          active
+                            ? "border-primary ring-2 ring-primary/30"
+                            : "hover:border-primary/60"
+                        }`}
+                        aria-label={`Use logo candidate ${url}`}
+                        title={url}
+                      >
+                        <img
+                          src={url}
+                          alt="Logo candidate"
+                          className="max-h-full max-w-full object-contain"
+                          onError={(e) => {
+                            (e.currentTarget.parentElement as HTMLElement).style.opacity = "0.3";
+                          }}
+                        />
+                        {active && (
+                          <span className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5">
+                            <Check className="h-3 w-3" />
+                          </span>
+                        )}
+                        {switchingLogo && active && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-background/60">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          <BrandForm
+            initial={initial}
+            scrapeId={scrapeResult._scrape_id}
+            submitLabel="Save Brand Profile"
+            submitting={submitting}
+            onSubmit={handleSave}
+            extraActions={
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setScrapeResult(null);
+                  setWebsiteUrl("");
+                  setSelectedCandidate(null);
+                }}
+              >
+                Try another URL
+              </Button>
+            }
+          />
+        </>
       )}
     </div>
   );

@@ -401,7 +401,7 @@ export interface BrandScrapeResult {
   website_url: string;
   logo_path?: string | null;
   logo_url?: string | null;
-  logo_candidates?: string[];
+  logo_candidates: string[];
   primary_color?: string | null;
   secondary_color?: string | null;
   accent_color?: string | null;
@@ -474,6 +474,15 @@ export async function uploadScrapeLogo(scrapeId: string, file: File) {
     "/brand/scrape/logo",
     form,
     { headers: { "Content-Type": "multipart/form-data" }, timeout: 60000 },
+  );
+  return data;
+}
+
+export async function selectScrapeLogoCandidate(scrapeId: string, candidateUrl: string) {
+  const { data } = await api.post<{ pending_logo_path: string; logo_url: string }>(
+    "/brand/scrape/select-logo",
+    { scrape_id: scrapeId, candidate_url: candidateUrl },
+    { timeout: 30000 },
   );
   return data;
 }
