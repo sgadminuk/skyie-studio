@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Loader2, Upload, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlertTriangle, Loader2, Upload, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,28 @@ export function BrandForm({
 }: BrandFormProps) {
   const [values, setValues] = useState<BrandFormValues>(initial);
   const [uploading, setUploading] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Sync logo-related fields from props when the parent swaps candidates —
+  // useState(initial) only captures on first mount, so without this effect a
+  // newly-picked logo URL would never reach the img element.
+  useEffect(() => {
+    setValues((prev) => {
+      if (
+        prev.logo_preview_url === initial.logo_preview_url &&
+        prev.pending_logo_path === initial.pending_logo_path
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        logo_preview_url: initial.logo_preview_url,
+        pending_logo_path: initial.pending_logo_path,
+      };
+    });
+    setLogoError(false);
+  }, [initial.logo_preview_url, initial.pending_logo_path]);
 
   function update<K extends keyof BrandFormValues>(key: K, val: BrandFormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: val }));
@@ -146,12 +167,22 @@ export function BrandForm({
           />
           {logoUrl ? (
             <div className="flex items-start gap-4">
-              <div className="h-28 w-28 rounded-md border bg-muted flex items-center justify-center p-2 shrink-0">
-                <img
-                  src={logoUrl}
-                  alt="Brand logo"
-                  className="max-h-full max-w-full object-contain"
-                />
+              <div className="h-28 w-28 rounded-md border bg-muted flex items-center justify-center p-2 shrink-0 overflow-hidden">
+                {logoError ? (
+                  <div className="flex flex-col items-center justify-center text-center text-[10px] text-muted-foreground">
+                    <AlertTriangle className="h-4 w-4 text-amber-500 mb-1" />
+                    <span>Preview failed</span>
+                  </div>
+                ) : (
+                  <img
+                    key={logoUrl}
+                    src={logoUrl}
+                    alt="Brand logo"
+                    className="max-h-full max-w-full object-contain"
+                    onLoad={() => setLogoError(false)}
+                    onError={() => setLogoError(true)}
+                  />
+                )}
               </div>
               <div className="space-y-2 flex-1">
                 <Button

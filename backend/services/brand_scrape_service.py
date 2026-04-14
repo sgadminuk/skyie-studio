@@ -96,6 +96,59 @@ async def _fetch_html(url: str) -> tuple[str, str]:
         return str(resp.url), html
 
 
+_SVG_VIEWBOX_RE = re.compile(rb'\bviewBox\s*=', re.IGNORECASE)
+_SVG_WIDTH_RE = re.compile(rb'\bwidth\s*=\s*"([^"]+)"', re.IGNORECASE)
+_SVG_HEIGHT_RE = re.compile(rb'\bheight\s*=\s*"([^"]+)"', re.IGNORECASE)
+_SVG_OPEN_TAG_RE = re.compile(rb"<svg\b[^>]*>", re.IGNORECASE)
+
+
+def _normalize_svg_for_display(raw: bytes) -> bytes:
+    """Ensure the SVG has a viewBox so it scales correctly inside <img>.
+
+    SVGs with explicit width/height but no viewBox render at their intrinsic
+    pixel size in Safari and some Chrome versions, overflowing thumbnail
+    containers. We inject a viewBox derived from width/height when missing.
+    Also strip any UTF-8 BOM and leading whitespace before <svg>.
+    """
+    if raw[:3] == b"\xef\xbb\xbf":
+        raw = raw[3:]
+    raw = raw.lstrip()
+
+    if not raw.startswith(b"<?xml") and not raw.lower().startswith(b"<svg"):
+        return raw  # Not recognizable SVG, leave alone
+
+    open_match = _SVG_OPEN_TAG_RE.search(raw)
+    if not open_match:
+        return raw
+    open_tag = open_match.group(0)
+
+    if _SVG_VIEWBOX_RE.search(open_tag):
+        return raw  # Already has viewBox
+
+    def parse_dim(value: bytes) -> Optional[float]:
+        try:
+            s = value.decode("ascii", "ignore").strip().lower()
+            for suffix in ("px", "pt", "em", "rem", "%"):
+                if s.endswith(suffix):
+                    s = s[: -len(suffix)]
+                    break
+            return float(s)
+        except Exception:
+            return None
+
+    w_m = _SVG_WIDTH_RE.search(open_tag)
+    h_m = _SVG_HEIGHT_RE.search(open_tag)
+    w = parse_dim(w_m.group(1)) if w_m else None
+    h = parse_dim(h_m.group(1)) if h_m else None
+    if not w or not h or w <= 0 or h <= 0:
+        w = w or 100.0
+        h = h or 100.0
+
+    viewbox = f' viewBox="0 0 {int(w)} {int(h)}"'.encode("ascii")
+    new_open_tag = open_tag[:4] + viewbox + open_tag[4:]
+    return raw.replace(open_tag, new_open_tag, 1)
+
+
 async def _download_logo(logo_url: str, dest_dir: Path) -> Optional[str]:
     """Download a logo candidate and return its local path, or None on failure."""
     try:
@@ -124,6 +177,9 @@ async def _download_logo(logo_url: str, dest_dir: Path) -> Optional[str]:
             url_ext = Path(urlparse(logo_url).path).suffix.lower()
             if url_ext in {".png", ".jpg", ".jpeg", ".svg", ".webp", ".ico"}:
                 ext = url_ext if url_ext != ".jpeg" else ".jpg"
+
+        if ext == ".svg":
+            raw = _normalize_svg_for_display(raw)
 
         dest_dir.mkdir(parents=True, exist_ok=True)
         dest = dest_dir / f"logo{ext}"
