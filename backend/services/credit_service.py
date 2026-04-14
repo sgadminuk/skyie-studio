@@ -40,11 +40,9 @@ VEO_RESOLUTION_MULT: dict[str, float] = {
 def _gemini_video_credits(params: dict) -> int:
     duration = float(params.get("duration_sec") or 8)
     resolution = str(params.get("resolution") or "1080p").lower()
-    audio = bool(params.get("generate_audio", True))
-
-    base_per_sec = (
-        VEO_CREDITS_PER_SEC_AUDIO_720P if audio else VEO_CREDITS_PER_SEC_SILENT_720P
-    )
+    # Veo 3.1 always renders synchronized audio (API doesn't accept a mute
+    # flag), so audio cost always applies regardless of the UI toggle.
+    base_per_sec = VEO_CREDITS_PER_SEC_AUDIO_720P
     mult = VEO_RESOLUTION_MULT.get(resolution, 1.5)
     # Always round up — never under-charge.
     import math

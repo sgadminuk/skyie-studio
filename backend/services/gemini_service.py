@@ -269,7 +269,8 @@ class GeminiService:
         duration = duration_sec or settings.GEMINI_DEFAULT_VIDEO_DURATION
         aspect = aspect_ratio or settings.GEMINI_DEFAULT_VIDEO_ASPECT
         res = resolution or settings.GEMINI_DEFAULT_VIDEO_RESOLUTION
-        audio = settings.GEMINI_DEFAULT_GENERATE_AUDIO if generate_audio is None else generate_audio
+        # Veo 3.1 always renders audio — ignore the incoming flag for pricing.
+        audio = True
 
         config = self._build_video_config(
             duration=duration,
@@ -395,14 +396,16 @@ class GeminiService:
         negative_prompt: str | None,
     ):
         from google.genai import types  # type: ignore
+        # Veo 3.1 always generates synchronized audio — the API rejects a
+        # `generate_audio` flag, so we silently drop it here. `generate_audio`
+        # stays in our own request schema for forward-compat with future
+        # Veo variants that may let you mute.
         return types.GenerateVideosConfig(
             aspect_ratio=aspect_ratio,
             resolution=resolution,
             duration_seconds=duration,
-            generate_audio=generate_audio,
             number_of_videos=1,
             negative_prompt=negative_prompt,
-            person_generation="allow_adult",
         )
 
     async def _call_generate_content(self, contents: list[Any], config) -> Any:

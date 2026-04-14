@@ -13,7 +13,6 @@ import {
   X,
   Sparkles,
   Volume2,
-  VolumeX,
   Palette,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,7 +96,8 @@ export default function StudioPage() {
   // video-specific
   const [duration, setDuration] = useState(8);
   const [resolution, setResolution] = useState("1080p");
-  const [generateAudio, setGenerateAudio] = useState(true);
+  // Veo 3.1 always renders synchronized audio — no toggle.
+  const generateAudio = true;
 
   // brand kit
   const [brands, setBrands] = useState<BrandProfile[]>([]);
@@ -618,25 +618,16 @@ export default function StudioPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Audio</Label>
-                    <button
-                      type="button"
-                      onClick={() => setGenerateAudio((v) => !v)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-md border w-full ${
-                        generateAudio ? "border-primary bg-primary/10" : "border-border"
-                      }`}
+                    <div
+                      className="flex items-center gap-2 px-3 py-2 rounded-md border w-full border-primary bg-primary/10"
+                      title="Veo 3.1 always renders synchronized audio"
                     >
-                      {generateAudio ? (
-                        <>
-                          <Volume2 className="h-4 w-4 text-primary" />
-                          <span className="text-sm">Synchronized audio ON</span>
-                        </>
-                      ) : (
-                        <>
-                          <VolumeX className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Silent video</span>
-                        </>
-                      )}
-                    </button>
+                      <Volume2 className="h-4 w-4 text-primary" />
+                      <span className="text-sm">Synchronized audio ON</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground">
+                        always
+                      </span>
+                    </div>
                   </div>
                 </>
               )}
