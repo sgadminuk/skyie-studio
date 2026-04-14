@@ -259,6 +259,7 @@ export default function StudioPage() {
                 accept="image/*"
                 className="hidden"
                 onChange={handleSingleUpload}
+                aria-label="Upload source image"
               />
               {sourceImage ? (
                 <div className="relative inline-block">
@@ -269,6 +270,8 @@ export default function StudioPage() {
                   />
                   <button
                     type="button"
+                    aria-label="Remove source image"
+                    title="Remove"
                     className="absolute top-1 right-1 bg-black/60 rounded-full p-1"
                     onClick={() => setSourceImage(null)}
                   >
@@ -319,6 +322,7 @@ export default function StudioPage() {
                 multiple
                 className="hidden"
                 onChange={handleMultiUpload}
+                aria-label="Upload reference images"
               />
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 {composeImages.map((img, idx) => (
@@ -330,6 +334,8 @@ export default function StudioPage() {
                     />
                     <button
                       type="button"
+                      aria-label={`Remove reference image ${idx + 1}`}
+                      title="Remove"
                       className="absolute top-1 right-1 bg-black/60 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => removeComposeImage(idx)}
                     >
@@ -435,8 +441,9 @@ export default function StudioPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Duration: {duration}s</Label>
+                    <Label htmlFor="video-duration-slider">Duration: {duration}s</Label>
                     <input
+                      id="video-duration-slider"
                       type="range"
                       min={2}
                       max={8}
@@ -444,6 +451,7 @@ export default function StudioPage() {
                       value={duration}
                       onChange={(e) => setDuration(Number(e.target.value))}
                       className="w-full"
+                      aria-label="Video duration in seconds"
                     />
                   </div>
                   <div className="space-y-2">
@@ -474,7 +482,7 @@ export default function StudioPage() {
 
             {intent === "video" && (
               <p className="text-[11px] text-muted-foreground pt-2 border-t">
-                Veo 3.1 renders take ~2–5 minutes. You'll be redirected to the job page where progress streams in real time.
+                Veo 3.1 renders take ~2–5 minutes. You will be redirected to the job page where progress streams in real time.
               </p>
             )}
           </CardContent>
