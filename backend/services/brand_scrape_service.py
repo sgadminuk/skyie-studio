@@ -150,17 +150,33 @@ def _pick_logo_candidates(soup: BeautifulSoup, base_url: str) -> list[str]:
         if scored.get(url, -1) < score:
             scored[url] = score
 
-    # ── 1. <link rel="..."> icons ────────────────────────────────────
+    # ── 1. <link rel="..."> — icons, preloads, and explicit logos ──────
     for link in soup.find_all("link", rel=True):
         rel = " ".join(link.get("rel") or []).lower()
         type_attr = (link.get("type") or "").lower()
         sizes_attr = (link.get("sizes") or "").lower()
+        as_attr = (link.get("as") or "").lower()
         href = link.get("href")
         if not href:
             continue
+        href_lower = href.lower()
+        looks_like_logo = "logo" in href_lower or "wordmark" in href_lower
+        is_svg = href_lower.endswith(".svg") or "svg" in type_attr
+
+        # <link rel="preload" as="image" href="/logo.svg"> — Next.js / Vite
+        # sites preload above-the-fold images this way, including their real
+        # wordmark logos. Score very high when the href looks logo-ish.
+        if "preload" in rel and as_attr == "image":
+            score = 60
+            if looks_like_logo:
+                score = 230 if is_svg else 200
+            elif is_svg:
+                score = 120
+            bump(href, score)
+            continue
 
         # SVG favicon is almost always the real wordmark/logomark → top priority
-        if "icon" in rel and "svg" in type_attr:
+        if "icon" in rel and is_svg:
             bump(href, 220)
             continue
 
@@ -267,17 +283,89 @@ def _pick_logo_candidates(soup: BeautifulSoup, base_url: str) -> list[str]:
     return [url for url, _ in ranked[:15]]
 
 
+_SVG_HEX_RE = re.compile(r"#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b")
+_SVG_RGB_RE = re.compile(
+    r"rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*[\d.]+\s*)?\)"
+)
+
+
+def _is_saturated_non_neutral(r: int, g: int, b: int) -> bool:
+    max_c, min_c = max(r, g, b), min(r, g, b)
+    lum = (r + g + b) / 3.0
+    saturation = (max_c - min_c) / max_c if max_c else 0.0
+    if lum > 240 or lum < 18:
+        return False
+    if saturation < 0.18:
+        return False
+    return True
+
+
+def _extract_colors_from_svg(svg_path: str) -> dict[str, Optional[str]]:
+    """Parse an SVG and pick up to 3 distinct saturated fill colors."""
+    try:
+        content = Path(svg_path).read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return {}
+
+    ordered: list[str] = []
+    seen: set[str] = set()
+
+    def consider(r: int, g: int, b: int):
+        if not _is_saturated_non_neutral(r, g, b):
+            return
+        hex_color = f"#{r:02x}{g:02x}{b:02x}"
+        if hex_color in seen:
+            return
+        seen.add(hex_color)
+        ordered.append(hex_color)
+
+    for match in _SVG_HEX_RE.finditer(content):
+        hex_raw = match.group(1).lower()
+        if len(hex_raw) == 3:
+            hex_raw = "".join(c * 2 for c in hex_raw)
+        r = int(hex_raw[0:2], 16)
+        g = int(hex_raw[2:4], 16)
+        b = int(hex_raw[4:6], 16)
+        consider(r, g, b)
+        if len(ordered) >= 6:
+            break
+
+    for match in _SVG_RGB_RE.finditer(content):
+        r, g, b = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        if 0 <= r <= 255 and 0 <= g <= 255 and 0 <= b <= 255:
+            consider(r, g, b)
+            if len(ordered) >= 6:
+                break
+
+    result: dict[str, Optional[str]] = {}
+    if ordered:
+        result["primary_color"] = ordered[0]
+    if len(ordered) > 1:
+        result["secondary_color"] = ordered[1]
+    if len(ordered) > 2:
+        result["accent_color"] = ordered[2]
+    return result
+
+
 def _extract_palette_from_image(image_path: str) -> dict[str, Optional[str]]:
-    """Return up to 3 dominant saturated colors from an image as hex strings."""
+    """Return up to 3 dominant saturated colors from an image as hex strings.
+
+    Dispatches to a regex SVG parser for .svg files (Pillow can't rasterize
+    vectors without CairoSVG), and Pillow median-cut for raster formats.
+    """
+    p = Path(image_path)
+    ext = p.suffix.lower()
+
+    if ext == ".svg":
+        return _extract_colors_from_svg(image_path)
+    if ext == ".ico":
+        return {}
+
     try:
         from PIL import Image
     except Exception:
         return {}
 
-    p = Path(image_path)
-    ext = p.suffix.lower()
-    if ext in (".svg", ".ico"):
-        return {}
     if not p.exists() or p.stat().st_size == 0:
         return {}
 
@@ -302,14 +390,7 @@ def _extract_palette_from_image(image_path: str) -> dict[str, Optional[str]]:
                 continue
             r, g, b = palette_raw[base], palette_raw[base + 1], palette_raw[base + 2]
 
-            max_c, min_c = max(r, g, b), min(r, g, b)
-            lum = (r + g + b) / 3.0
-            saturation = (max_c - min_c) / max_c if max_c else 0.0
-
-            # Skip near-white / near-black / near-gray — they are backgrounds
-            if lum > 240 or lum < 18:
-                continue
-            if saturation < 0.18:
+            if not _is_saturated_non_neutral(r, g, b):
                 continue
 
             hex_color = f"#{r:02x}{g:02x}{b:02x}"
