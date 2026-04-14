@@ -240,12 +240,22 @@ class GeminiImageRequest(BaseModel):
     prompt: str = Field(..., min_length=1)
     reference_image_paths: list[str] = Field(default_factory=list, max_length=10)
     aspect_ratio: str = "1:1"
+    brand_profile_id: str | None = None
+    include_logo_overlay: bool = False
+    logo_position: str = "bottom-right"
+    logo_scale: float = Field(default=0.15, ge=0.05, le=0.4)
+    logo_opacity: float = Field(default=0.95, ge=0.1, le=1.0)
 
 
 class GeminiImageEditRequest(BaseModel):
     prompt: str = Field(..., min_length=1)
     source_image_path: str
     mask_image_path: str | None = None
+    brand_profile_id: str | None = None
+    include_logo_overlay: bool = False
+    logo_position: str = "bottom-right"
+    logo_scale: float = Field(default=0.15, ge=0.05, le=0.4)
+    logo_opacity: float = Field(default=0.95, ge=0.1, le=1.0)
 
 
 class GeminiVideoRequest(BaseModel):
@@ -256,6 +266,7 @@ class GeminiVideoRequest(BaseModel):
     resolution: str = "1080p"
     generate_audio: bool = True
     negative_prompt: str | None = None
+    brand_profile_id: str | None = None
 
 
 def _idempotent_response(existing: dict) -> dict:

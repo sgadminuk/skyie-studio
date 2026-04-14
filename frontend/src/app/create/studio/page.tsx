@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ImagePlus,
@@ -13,6 +14,7 @@ import {
   Sparkles,
   Volume2,
   VolumeX,
+  Palette,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,9 +33,13 @@ import {
   generateGeminiImage,
   generateGeminiImageEdit,
   generateGeminiVideo,
+  getBrandProfiles,
   uploadAvatar,
+  type BrandProfile,
 } from "@/lib/api";
 import { toast } from "sonner";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type Intent = "image" | "edit" | "compose" | "video";
 
@@ -93,10 +99,29 @@ export default function StudioPage() {
   const [resolution, setResolution] = useState("1080p");
   const [generateAudio, setGenerateAudio] = useState(true);
 
+  // brand kit
+  const [brands, setBrands] = useState<BrandProfile[]>([]);
+  const [selectedBrandId, setSelectedBrandId] = useState<string>("");
+  const [includeLogo, setIncludeLogo] = useState(false);
+  const [logoPosition, setLogoPosition] = useState("bottom-right");
+
   const singleInputRef = useRef<HTMLInputElement>(null);
   const multiInputRef = useRef<HTMLInputElement>(null);
 
   const activeIntent = useMemo(() => INTENTS.find((i) => i.id === intent)!, [intent]);
+  const selectedBrand = useMemo(
+    () => brands.find((b) => b.id === selectedBrandId) || null,
+    [brands, selectedBrandId],
+  );
+  const canOverlayLogo = intent !== "video" && !!selectedBrand?.logo_url;
+
+  useEffect(() => {
+    getBrandProfiles()
+      .then(setBrands)
+      .catch(() => {
+        // Silent — brand kit is optional for generation
+      });
+  }, []);
 
   async function handleSingleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -160,23 +185,34 @@ export default function StudioPage() {
     if (!canSubmit() || submitting) return;
     setSubmitting(true);
 
+    const brandId = selectedBrandId || null;
+    const overlayPayload = canOverlayLogo && includeLogo
+      ? { include_logo_overlay: true, logo_position: logoPosition }
+      : {};
+
     try {
       let result;
       if (intent === "image") {
         result = await generateGeminiImage({
           prompt,
           aspect_ratio: aspectRatio === "16:9" ? "16:9" : aspectRatio,
+          brand_profile_id: brandId,
+          ...overlayPayload,
         });
       } else if (intent === "edit") {
         result = await generateGeminiImageEdit({
           prompt,
           source_image_path: sourceImage!.path,
+          brand_profile_id: brandId,
+          ...overlayPayload,
         });
       } else if (intent === "compose") {
         result = await generateGeminiImage({
           prompt,
           reference_image_paths: composeImages.map((i) => i.path),
           aspect_ratio: aspectRatio,
+          brand_profile_id: brandId,
+          ...overlayPayload,
         });
       } else {
         result = await generateGeminiVideo({
@@ -187,6 +223,7 @@ export default function StudioPage() {
           resolution,
           generate_audio: generateAudio,
           negative_prompt: negativePrompt || null,
+          brand_profile_id: brandId,
         });
       }
 
@@ -216,6 +253,131 @@ export default function StudioPage() {
           </p>
         </div>
       </div>
+
+      {/* Brand Kit selector */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Palette className="h-4 w-4 text-primary" />
+            Brand Kit
+            {brands.length === 0 && (
+              <Badge variant="outline" className="text-[10px] ml-auto">
+                None yet
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {brands.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Create a brand profile to steer generation with your tone, colors, and logo.{" "}
+              <Link href="/brand/new" className="underline">
+                Create one →
+              </Link>
+            </p>
+          ) : (
+            <>
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto] items-end">
+                <div className="space-y-2">
+                  <Label className="text-xs">Apply brand</Label>
+                  <Select
+                    value={selectedBrandId || "__none__"}
+                    onValueChange={(v) => {
+                      setSelectedBrandId(v === "__none__" ? "" : v);
+                      if (v === "__none__") setIncludeLogo(false);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="No brand" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">No brand</SelectItem>
+                      {brands.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.name}
+                          {b.industry ? ` — ${b.industry}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedBrand?.logo_url && (
+                  <div className="h-12 w-24 rounded border bg-muted flex items-center justify-center p-1">
+                    <img
+                      src={
+                        selectedBrand.logo_url.startsWith("http")
+                          ? selectedBrand.logo_url
+                          : `${API_URL}${selectedBrand.logo_url}`
+                      }
+                      alt={`${selectedBrand.name} logo`}
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {selectedBrand && (
+                <div className="rounded-md border bg-muted/30 px-3 py-2 space-y-1 text-[11px] text-muted-foreground">
+                  {selectedBrand.tone_of_voice && (
+                    <p>
+                      <span className="font-medium text-foreground">Tone:</span>{" "}
+                      {selectedBrand.tone_of_voice}
+                    </p>
+                  )}
+                  {selectedBrand.target_audience && (
+                    <p>
+                      <span className="font-medium text-foreground">Audience:</span>{" "}
+                      {selectedBrand.target_audience}
+                    </p>
+                  )}
+                  <p className="italic">
+                    Brand identity is prepended to your prompt so Veo/Nano Banana stays on-brand.
+                  </p>
+                </div>
+              )}
+
+              {canOverlayLogo && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="includeLogo"
+                      checked={includeLogo}
+                      onChange={(e) => setIncludeLogo(e.target.checked)}
+                      className="h-4 w-4 rounded border-border"
+                      aria-label="Overlay brand logo on output"
+                      title="Overlay brand logo on output"
+                    />
+                    <Label htmlFor="includeLogo" className="text-xs">
+                      Overlay logo on output image
+                    </Label>
+                  </div>
+                  {includeLogo && (
+                    <Select value={logoPosition} onValueChange={setLogoPosition}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                        <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                        <SelectItem value="top-right">Top Right</SelectItem>
+                        <SelectItem value="top-left">Top Left</SelectItem>
+                        <SelectItem value="center">Center</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              )}
+
+              {intent === "video" && selectedBrand && (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Note: logo overlay is not yet available for video — only prompt injection.
+                </p>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Intent tabs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

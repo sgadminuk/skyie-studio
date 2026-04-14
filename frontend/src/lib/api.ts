@@ -190,12 +190,22 @@ export interface GeminiImageParams {
   prompt: string;
   reference_image_paths?: string[];
   aspect_ratio?: string;
+  brand_profile_id?: string | null;
+  include_logo_overlay?: boolean;
+  logo_position?: string;
+  logo_scale?: number;
+  logo_opacity?: number;
 }
 
 export interface GeminiImageEditParams {
   prompt: string;
   source_image_path: string;
   mask_image_path?: string | null;
+  brand_profile_id?: string | null;
+  include_logo_overlay?: boolean;
+  logo_position?: string;
+  logo_scale?: number;
+  logo_opacity?: number;
 }
 
 export interface GeminiVideoParams {
@@ -206,6 +216,7 @@ export interface GeminiVideoParams {
   resolution?: string;
   generate_audio?: boolean;
   negative_prompt?: string | null;
+  brand_profile_id?: string | null;
 }
 
 function makeIdempotencyKey(): string {

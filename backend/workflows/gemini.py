@@ -8,6 +8,11 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from services.brand_apply_service import (
+    apply_logo_overlay,
+    compose_prompt_with_brand,
+    fetch_brand_profile,
+)
 from services.gemini_service import (
     GeminiError,
     GeminiSafetyError,
@@ -33,6 +38,21 @@ def _make_progress_cb(job_id: str):
     return cb
 
 
+def _resolve_brand(params: dict, intent: str):
+    """Look up the brand and apply its prefix to the prompt (if brand_profile_id set)."""
+    brand_id = params.get("brand_profile_id")
+    user_id = params.get("_user_id")
+    if not brand_id or not user_id:
+        return None
+    brand = fetch_brand_profile(brand_id, user_id)
+    if brand is None:
+        logger.warning("brand_profile_id %s not found for user %s", brand_id, user_id)
+        return None
+    prompt = params.get("prompt", "")
+    params["prompt"] = compose_prompt_with_brand(prompt, brand, intent=intent)
+    return brand
+
+
 async def execute_gemini_image(job_id: str, params: dict) -> str:
     """Text-to-image or text+references via Nano Banana.
 
@@ -40,7 +60,11 @@ async def execute_gemini_image(job_id: str, params: dict) -> str:
         prompt: str
         reference_image_paths: list[str] (optional) — up to 10 for composition
         aspect_ratio: str (default "1:1")
+        brand_profile_id: str (optional) — apply brand prefix + logo overlay
+        include_logo_overlay: bool
+        logo_position: str
     """
+    brand = _resolve_brand(params, intent="image")
     prompt = params.get("prompt", "").strip()
     if not prompt:
         raise ValueError("prompt is required")
@@ -75,12 +99,23 @@ async def execute_gemini_image(job_id: str, params: dict) -> str:
     ext = ".png" if "png" in result.mime_type else ".jpg"
     output_path = save_bytes_to_output(job_id, result.image_bytes, f"image{ext}")
 
+    if brand and params.get("include_logo_overlay") and brand.logo_path:
+        update_job(job_id, progress=92, step="Applying brand logo")
+        apply_logo_overlay(
+            output_path,
+            brand.logo_path,
+            position=params.get("logo_position", "bottom-right"),
+            scale=float(params.get("logo_scale") or 0.15),
+            opacity=float(params.get("logo_opacity") or 0.95),
+        )
+
     update_job(job_id, progress=100, step="Complete", cost_usd=result.cost_usd)
     return output_path
 
 
 async def execute_gemini_image_edit(job_id: str, params: dict) -> str:
     """Inpaint / edit an existing image."""
+    brand = _resolve_brand(params, intent="image")
     prompt = params.get("prompt", "").strip()
     source_path = params.get("source_image_path")
     mask_path = params.get("mask_image_path")
@@ -107,6 +142,16 @@ async def execute_gemini_image_edit(job_id: str, params: dict) -> str:
     ext = ".png" if "png" in result.mime_type else ".jpg"
     output_path = save_bytes_to_output(job_id, result.image_bytes, f"edited{ext}")
 
+    if brand and params.get("include_logo_overlay") and brand.logo_path:
+        update_job(job_id, progress=92, step="Applying brand logo")
+        apply_logo_overlay(
+            output_path,
+            brand.logo_path,
+            position=params.get("logo_position", "bottom-right"),
+            scale=float(params.get("logo_scale") or 0.15),
+            opacity=float(params.get("logo_opacity") or 0.95),
+        )
+
     update_job(job_id, progress=100, step="Complete", cost_usd=result.cost_usd)
     return output_path
 
@@ -122,7 +167,9 @@ async def execute_gemini_video(job_id: str, params: dict) -> str:
         resolution: str — "720p" or "1080p"
         generate_audio: bool
         negative_prompt: str (optional)
+        brand_profile_id: str (optional) — apply brand prefix to prompt
     """
+    _resolve_brand(params, intent="video")
     prompt = params.get("prompt", "").strip()
     if not prompt:
         raise ValueError("prompt is required")
