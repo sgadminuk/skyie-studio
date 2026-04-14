@@ -157,6 +157,15 @@ def get_job(job_id: str) -> dict | None:
                 data["params"] = json.loads(data["params"])
             except (json.JSONDecodeError, TypeError):
                 pass
+        # Coerce numeric fields back from string — Redis HSET stores everything as strings.
+        raw_cost = data.get("cost_usd", "")
+        if raw_cost == "" or raw_cost is None:
+            data["cost_usd"] = None
+        else:
+            try:
+                data["cost_usd"] = float(raw_cost)
+            except (TypeError, ValueError):
+                data["cost_usd"] = None
         return data
 
     # Fallback to PostgreSQL

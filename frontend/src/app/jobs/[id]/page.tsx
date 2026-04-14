@@ -244,11 +244,15 @@ export default function JobDetailPage() {
                   {exporting ? "Exporting..." : "Export All Formats"}
                 </Button>
               )}
-              {job.cost_usd != null && (
-                <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                  Provider cost: ${job.cost_usd.toFixed(4)}
-                </span>
-              )}
+              {(() => {
+                const cost = job.cost_usd == null ? null : Number(job.cost_usd);
+                if (cost == null || Number.isNaN(cost)) return null;
+                return (
+                  <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                    Provider cost: ${cost.toFixed(4)}
+                  </span>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
