@@ -19,6 +19,7 @@ import {
 import {
   estimateVeoMultiShot,
   generateVeoMultiShot,
+  suggestVeoPrompt,
   uploadAvatar,
   type MultiShotEstimate,
   type VeoMultiShotParams,
@@ -375,6 +376,31 @@ function ShotCard({
   const refsInputRef = useRef<HTMLInputElement>(null);
   const firstFrameInputRef = useRef<HTMLInputElement>(null);
   const usingFirstFrame = !!shot.first_frame;
+  const [suggesting, setSuggesting] = useState(false);
+
+  async function handleSuggest() {
+    if (!shot.prompt.trim()) {
+      toast.error("Type a brief first — even a few words is enough");
+      return;
+    }
+    setSuggesting(true);
+    try {
+      const result = await suggestVeoPrompt(shot.prompt);
+      if (result.prompt && result.prompt !== shot.prompt) {
+        onChange({ prompt: result.prompt });
+        toast.success(`Shot ${index + 1} prompt expanded`);
+      } else {
+        toast.message("No changes suggested");
+      }
+    } catch (e) {
+      const msg =
+        (e as { response?: { data?: { detail?: string } } }).response?.data?.detail ||
+        (e as Error).message;
+      toast.error(`Suggest failed: ${msg}`);
+    } finally {
+      setSuggesting(false);
+    }
+  }
 
   return (
     <Card>
@@ -387,8 +413,25 @@ function ShotCard({
         )}
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <Label>Prompt</Label>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Prompt</Label>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleSuggest}
+              disabled={suggesting || !shot.prompt.trim()}
+              title="Expand this brief into a Veo-optimized prompt via Gemini Flash"
+            >
+              {suggesting ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              Suggest with Gemini
+            </Button>
+          </div>
           <Textarea
             value={shot.prompt}
             onChange={(e) => onChange({ prompt: e.target.value })}
@@ -434,6 +477,9 @@ function ShotCard({
                 <div key={r.path} className="relative group">
                   <img src={r.preview || previewUrl(r.path)} alt="" className="h-20 w-20 object-cover rounded" />
                   <button
+                    type="button"
+                    aria-label="Remove reference image"
+                    title="Remove reference image"
                     onClick={() => onRemoveRef(r.path)}
                     className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100"
                   >
@@ -443,6 +489,9 @@ function ShotCard({
               ))}
               {shot.references.length < MAX_REFS_PER_SHOT && !usingFirstFrame && (
                 <button
+                  type="button"
+                  aria-label="Upload reference images"
+                  title="Upload reference images"
                   onClick={() => refsInputRef.current?.click()}
                   className="h-20 w-20 border-2 border-dashed rounded flex items-center justify-center text-muted-foreground hover:bg-accent"
                 >
@@ -480,6 +529,9 @@ function ShotCard({
                     className="h-20 w-20 object-cover rounded"
                   />
                   <button
+                    type="button"
+                    aria-label="Remove first-frame image"
+                    title="Remove first-frame image"
                     onClick={() => onChange({ first_frame: null })}
                     className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100"
                   >
@@ -489,6 +541,9 @@ function ShotCard({
               ) : (
                 shot.references.length === 0 && (
                   <button
+                    type="button"
+                    aria-label="Upload first-frame image"
+                    title="Upload first-frame image"
                     onClick={() => firstFrameInputRef.current?.click()}
                     className="h-20 w-20 border-2 border-dashed rounded flex items-center justify-center text-muted-foreground hover:bg-accent"
                   >

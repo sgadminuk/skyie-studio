@@ -403,6 +403,29 @@ async def generate_gemini_video(
     }
 
 
+# ── Veo 3.1 prompt suggestion ──────────────────────────────────────────────
+
+
+class PromptSuggestRequest(BaseModel):
+    brief: str = Field(..., min_length=1, max_length=4000)
+
+
+@router.post("/veo/prompt-suggest")
+async def suggest_veo_prompt(
+    request: PromptSuggestRequest,
+    user: User = Depends(get_current_user),
+):
+    """Expand a brief into a Veo-optimized prompt via Gemini Flash.
+
+    Stateless — no job, no credit reservation. Per-user rate limited via the
+    Gemini service preflight (defaults to GEMINI_USER_RATE_PER_MIN).
+    """
+    from services.prompt_enhance_service import enhance_veo_prompt
+
+    enhanced = await enhance_veo_prompt(request.brief, user_id=str(user.id))
+    return {"prompt": enhanced, "original": request.brief}
+
+
 # ── Veo 3.1 multi-shot ─────────────────────────────────────────────────────
 
 

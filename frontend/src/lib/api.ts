@@ -248,6 +248,16 @@ export async function generateGeminiVideo(params: GeminiVideoParams) {
   return data;
 }
 
+// ── Veo 3.1 prompt suggestion ─────────────────────────────────────────────
+
+export async function suggestVeoPrompt(brief: string) {
+  const { data } = await api.post<{ prompt: string; original: string }>(
+    "/generate/veo/prompt-suggest",
+    { brief },
+  );
+  return data;
+}
+
 // ── Veo 3.1 multi-shot ────────────────────────────────────────────────────
 
 export interface MultiShotShot {

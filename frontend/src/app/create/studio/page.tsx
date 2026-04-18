@@ -33,6 +33,7 @@ import {
   generateGeminiImageEdit,
   generateGeminiVideo,
   getBrandProfiles,
+  suggestVeoPrompt,
   uploadAvatar,
   type BrandProfile,
 } from "@/lib/api";
@@ -85,6 +86,7 @@ export default function StudioPage() {
   const [negativePrompt, setNegativePrompt] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
 
   // image / edit / video single source
   const [sourceImage, setSourceImage] = useState<UploadedImage | null>(null);
@@ -171,6 +173,30 @@ export default function StudioPage() {
 
   function removeComposeImage(idx: number) {
     setComposeImages((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  async function handleSuggestPrompt() {
+    if (!prompt.trim()) {
+      toast.error("Type a brief first — even a few words is enough");
+      return;
+    }
+    setSuggesting(true);
+    try {
+      const result = await suggestVeoPrompt(prompt);
+      if (result.prompt && result.prompt !== prompt) {
+        setPrompt(result.prompt);
+        toast.success("Prompt expanded by Gemini");
+      } else {
+        toast.message("No changes suggested");
+      }
+    } catch (e) {
+      const msg =
+        (e as { response?: { data?: { detail?: string } } }).response?.data?.detail ||
+        (e as Error).message;
+      toast.error(`Suggest failed: ${msg}`);
+    } finally {
+      setSuggesting(false);
+    }
   }
 
   function canSubmit(): boolean {
@@ -534,8 +560,24 @@ export default function StudioPage() {
 
         {/* Prompt */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="text-base">Prompt</CardTitle>
+            {intent === "video" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSuggestPrompt}
+                disabled={suggesting || !prompt.trim()}
+                title="Expand your brief into a Veo-optimized prompt via Gemini Flash"
+              >
+                {suggesting ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                Suggest with Gemini
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-3">
             <Textarea
