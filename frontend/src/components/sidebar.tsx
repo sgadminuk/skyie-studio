@@ -37,6 +37,7 @@ const NAV_ITEMS = [
 
 const CREATE_ITEMS = [
   { href: "/create/studio", label: "Gemini Studio", icon: Layers },
+  { href: "/create/multi-shot", label: "Multi-Shot Studio", icon: Film },
   { href: "/create/director", label: "AI Director", icon: Sparkles },
   { href: "/create/shots", label: "Shot Creator", icon: ImagePlus },
   { href: "/create/v2v", label: "Video Transform", icon: RefreshCw },

@@ -15,6 +15,21 @@ const WORKFLOWS = [
     credits: "8–480 credits",
   },
   {
+    href: "/create/multi-shot",
+    icon: Film,
+    title: "Multi-Shot Studio",
+    badge: "New",
+    description:
+      "Render 1–10 Veo 3.1 shots concurrently — each with its own prompt and reference images (or first frame) — then stitch them into a single MP4 with optional crossfades and background music.",
+    features: [
+      "Up to 10 Veo 3.1 shots",
+      "Per-shot reference images (1–3)",
+      "Hard-cut or crossfade stitch",
+      "Gemini Flash prompt assist",
+    ],
+    credits: "~60–480 credits",
+  },
+  {
     href: "/create/director",
     icon: Sparkles,
     title: "AI Director",
