@@ -248,6 +248,51 @@ export async function generateGeminiVideo(params: GeminiVideoParams) {
   return data;
 }
 
+// ── Veo 3.1 multi-shot ────────────────────────────────────────────────────
+
+export interface MultiShotShot {
+  prompt: string;
+  duration_sec: number;
+  reference_image_paths: string[];
+  first_frame_image_path: string | null;
+  negative_prompt?: string | null;
+}
+
+export interface VeoMultiShotParams {
+  shots: MultiShotShot[];
+  aspect_ratio: "16:9" | "9:16";
+  resolution: "720p" | "1080p";
+  stitch: { mode: "hard_cut" | "crossfade"; crossfade_duration_sec?: number };
+  music: { enabled: boolean; prompt?: string };
+  enhance_prompts: boolean;
+  brand_profile_id?: string | null;
+  concurrency?: number;
+}
+
+export interface MultiShotEstimate {
+  shot_count: number;
+  total_duration_sec: number;
+  estimated_cost_usd: number;
+  credits_required: number;
+  user_credits: number;
+  sufficient: boolean;
+}
+
+export async function estimateVeoMultiShot(params: VeoMultiShotParams) {
+  const { data } = await api.post<MultiShotEstimate>(
+    "/generate/veo/multi-shot/estimate",
+    params,
+  );
+  return data;
+}
+
+export async function generateVeoMultiShot(params: VeoMultiShotParams) {
+  const { data } = await api.post("/generate/veo/multi-shot", params, {
+    headers: { "Idempotency-Key": makeIdempotencyKey() },
+  });
+  return data as { job_id: string; credits_used: number; shot_count: number };
+}
+
 // ── Jobs ────────────────────────────────────────────────────────────────────
 
 export interface Job {

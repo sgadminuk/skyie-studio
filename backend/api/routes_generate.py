@@ -16,8 +16,10 @@ from services.job_queue import (
     run_talking_head_task, run_broll_task, run_full_production_task,
     run_shots_task, run_v2v_task, run_extend_task, run_director_task,
     run_gemini_image_task, run_gemini_image_edit_task, run_gemini_video_task,
+    run_veo_multi_shot_task,
 )
 from services.credit_service import get_credit_cost, check_credits, reserve_credits
+from services.gemini_service import estimate_video_cost_usd
 
 router = APIRouter(prefix="/api/v1/generate", tags=["generate"])
 
@@ -398,4 +400,125 @@ async def generate_gemini_video(
         "status": "queued",
         "credits_used": cost,
         "estimated_duration_seconds": 180,
+    }
+
+
+# ── Veo 3.1 multi-shot ─────────────────────────────────────────────────────
+
+
+class MultiShotShot(BaseModel):
+    prompt: str = Field(..., min_length=1)
+    duration_sec: int = Field(default=8)
+    reference_image_paths: list[str] = Field(default_factory=list, max_length=3)
+    first_frame_image_path: str | None = None
+    negative_prompt: str | None = None
+
+
+class MultiShotStitch(BaseModel):
+    mode: str = Field(default="hard_cut")  # "hard_cut" | "crossfade"
+    crossfade_duration_sec: float = Field(default=0.5, ge=0.1, le=2.0)
+
+
+class MultiShotMusic(BaseModel):
+    enabled: bool = False
+    prompt: str = "Cinematic background music"
+
+
+class VeoMultiShotRequest(BaseModel):
+    shots: list[MultiShotShot] = Field(..., min_length=1, max_length=10)
+    aspect_ratio: str = "9:16"
+    resolution: str = "1080p"
+    stitch: MultiShotStitch = Field(default_factory=MultiShotStitch)
+    music: MultiShotMusic = Field(default_factory=MultiShotMusic)
+    enhance_prompts: bool = False
+    brand_profile_id: str | None = None
+    concurrency: int = Field(default=3, ge=1, le=3)
+
+
+def _validate_multi_shot(req: VeoMultiShotRequest) -> None:
+    """Boundary validation that Pydantic alone can't express."""
+    allowed_durations = {4, 6, 8}
+    if req.stitch.mode not in ("hard_cut", "crossfade"):
+        raise HTTPException(
+            status_code=422,
+            detail="stitch.mode must be 'hard_cut' or 'crossfade'",
+        )
+    for i, shot in enumerate(req.shots):
+        if shot.duration_sec not in allowed_durations:
+            raise HTTPException(
+                status_code=422,
+                detail=f"shot {i + 1}: duration_sec must be one of {sorted(allowed_durations)}",
+            )
+        if shot.reference_image_paths and shot.first_frame_image_path:
+            raise HTTPException(
+                status_code=422,
+                detail=f"shot {i + 1}: reference_image_paths and first_frame_image_path are mutually exclusive",
+            )
+
+
+@router.post("/veo/multi-shot/estimate")
+async def estimate_veo_multi_shot(
+    request: VeoMultiShotRequest,
+    user: User = Depends(get_current_user),
+):
+    """Cost preflight — does not submit a job, does not reserve credits."""
+    _validate_multi_shot(request)
+    params = request.model_dump()
+    credits = get_credit_cost("veo_multi_shot", params)
+    total_duration = sum(shot.duration_sec for shot in request.shots)
+    cost_usd = sum(
+        estimate_video_cost_usd(shot.duration_sec, True) for shot in request.shots
+    )
+    return {
+        "shot_count": len(request.shots),
+        "total_duration_sec": total_duration,
+        "estimated_cost_usd": round(cost_usd, 4),
+        "credits_required": credits,
+        "user_credits": user.credits,
+        "sufficient": user.credits >= credits,
+    }
+
+
+@router.post("/veo/multi-shot")
+async def generate_veo_multi_shot(
+    request: VeoMultiShotRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Render N Veo 3.1 shots and stitch them into a single MP4."""
+    if idempotency_key:
+        existing = find_job_by_idempotency_key(str(user.id), idempotency_key)
+        if existing:
+            return _idempotent_response(existing)
+
+    _validate_multi_shot(request)
+    params = request.model_dump()
+    params["_user_id"] = str(user.id)
+
+    cost = get_credit_cost("veo_multi_shot", params)
+    if not await check_credits(session, user.id, cost):
+        raise HTTPException(
+            status_code=402,
+            detail=f"Insufficient credits. Need {cost}, have {user.credits}",
+        )
+
+    job_id = create_job(
+        "veo_multi_shot", params, user_id=str(user.id),
+        provider="gemini", model=settings.GEMINI_VEO_MODEL,
+        idempotency_key=idempotency_key,
+    )
+    await reserve_credits(
+        session, user.id, cost, job_id=uuid_mod.UUID(job_id),
+        description=f"Veo 3.1 multi-shot ({len(request.shots)} shots)",
+    )
+    run_veo_multi_shot_task.delay(job_id, params)
+    return {
+        "job_id": job_id,
+        "workflow": "veo_multi_shot",
+        "provider": "gemini",
+        "model": settings.GEMINI_VEO_MODEL,
+        "status": "queued",
+        "credits_used": cost,
+        "shot_count": len(request.shots),
     }

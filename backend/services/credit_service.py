@@ -24,6 +24,8 @@ CREDIT_COSTS: dict[str, int] = {
     "gemini_image_edit": 10,
     # Gemini (Veo 3.1) video — computed below from duration/resolution/audio
     "gemini_video": 0,
+    # Veo 3.1 multi-shot — computed below as the sum of per-shot Veo costs
+    "veo_multi_shot": 0,
 }
 
 # ── Veo 3.1 per-second credit rates ─────────────────────────────────────────
@@ -49,6 +51,24 @@ def _gemini_video_credits(params: dict) -> int:
     return int(math.ceil(duration * base_per_sec * mult))
 
 
+def _veo_multi_shot_credits(params: dict) -> int:
+    """Sum per-shot Veo costs at the parent's resolution.
+
+    Each shot inherits the parent aspect_ratio/resolution but carries its own
+    duration_sec. We pre-resolve the per-shot params and reuse the single-shot
+    cost function so the math stays in one place.
+    """
+    shots = params.get("shots") or []
+    resolution = params.get("resolution") or "1080p"
+    return sum(
+        _gemini_video_credits({
+            "duration_sec": shot.get("duration_sec") or 8,
+            "resolution": resolution,
+        })
+        for shot in shots
+    )
+
+
 def get_credit_cost(workflow: str, params: dict | None = None) -> int:
     """Calculate the credit cost for a given workflow.
 
@@ -64,6 +84,8 @@ def get_credit_cost(workflow: str, params: dict | None = None) -> int:
                 base += (len(scenes) - 1) * 5
         elif workflow == "gemini_video":
             return _gemini_video_credits(params)
+        elif workflow == "veo_multi_shot":
+            return _veo_multi_shot_credits(params)
         elif workflow == "gemini_image":
             refs = params.get("reference_image_paths") or []
             # Multi-image composition costs more tokens on Nano Banana

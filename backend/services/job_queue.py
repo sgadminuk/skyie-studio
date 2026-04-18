@@ -324,6 +324,13 @@ def run_gemini_video_task(self, job_id: str, params: dict):
     _run_workflow(job_id, params, execute_gemini_video)
 
 
+@celery_app.task(name="skyie.run_veo_multi_shot", bind=True)
+def run_veo_multi_shot_task(self, job_id: str, params: dict):
+    """Render N Veo 3.1 shots and stitch them into a single MP4."""
+    from workflows.veo_multi_shot import execute_veo_multi_shot
+    _run_workflow(job_id, params, execute_veo_multi_shot)
+
+
 def _run_workflow(job_id: str, params: dict, workflow_fn):
     """Common wrapper for running any workflow."""
     update_job(job_id, status=JobStatus.PROCESSING, started_at=time.time(), step="Starting")

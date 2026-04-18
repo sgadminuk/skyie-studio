@@ -1,5 +1,6 @@
 """Video compositing with FFmpeg. Generates placeholder videos in mock mode."""
 
+import json
 import subprocess
 import logging
 from pathlib import Path
@@ -15,6 +16,38 @@ def _run_ffmpeg(args: list[str], desc: str = ""):
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg failed ({desc}): {result.stderr}")
     return result
+
+
+def _probe_stream(path: str) -> dict:
+    """Return codec/width/height/fps/duration for the first video stream."""
+    result = subprocess.run(
+        [
+            "ffprobe", "-v", "error", "-print_format", "json",
+            "-show_streams", "-select_streams", "v:0",
+            "-show_entries",
+            "stream=codec_name,width,height,r_frame_rate,duration",
+            path,
+        ],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"ffprobe failed for {path}: {result.stderr}")
+    data = json.loads(result.stdout)
+    streams = data.get("streams") or []
+    if not streams:
+        raise RuntimeError(f"ffprobe found no video stream in {path}")
+    return streams[0]
+
+
+def _streams_uniform(clips: list[str]) -> bool:
+    """True iff all clips share codec + resolution + fps (so we can `-c copy`)."""
+    try:
+        probes = [_probe_stream(c) for c in clips]
+    except RuntimeError as e:
+        logger.warning("Falling back to re-encode stitch: %s", e)
+        return False
+    keys = {(p["codec_name"], p["width"], p["height"], p["r_frame_rate"]) for p in probes}
+    return len(keys) == 1
 
 
 def generate_test_video(output: str, duration: float = 3.0, width: int = 1080, height: int = 1920):
@@ -55,7 +88,7 @@ def composite_video(face_video: str, background: str, output: str):
 
 
 def stitch_clips(clips: list[str], output: str):
-    """Concatenate video clips with crossfade transitions."""
+    """Hard-cut concatenate clips. Uses stream-copy when codecs/res/fps match."""
     if not clips:
         raise ValueError("No clips to stitch")
 
@@ -64,19 +97,84 @@ def stitch_clips(clips: list[str], output: str):
         shutil.copy2(clips[0], output)
         return output
 
-    # Create concat file
     concat_file = Path(output).parent / "concat.txt"
     with open(concat_file, "w") as f:
         for clip in clips:
-            f.write(f"file '{clip}'\n")
+            # Demuxer requires single-quote-escaped paths.
+            safe = clip.replace("'", "'\\''")
+            f.write(f"file '{safe}'\n")
 
-    _run_ffmpeg([
-        "-f", "concat", "-safe", "0", "-i", str(concat_file),
-        "-c:v", "libx264", "-preset", "fast", "-c:a", "aac",
-        output,
-    ], "stitch")
+    if _streams_uniform(clips):
+        _run_ffmpeg([
+            "-f", "concat", "-safe", "0", "-i", str(concat_file),
+            "-c", "copy", output,
+        ], "stitch (copy)")
+    else:
+        _run_ffmpeg([
+            "-f", "concat", "-safe", "0", "-i", str(concat_file),
+            "-c:v", "libx264", "-preset", "fast", "-c:a", "aac",
+            output,
+        ], "stitch (re-encode)")
 
     concat_file.unlink(missing_ok=True)
+    return output
+
+
+def stitch_with_crossfade(clips: list[str], output: str, fade_sec: float = 0.5):
+    """Concatenate clips with a crossfade (xfade) + audio crossfade between each pair.
+
+    Requires re-encode. Probes each clip's duration to compute xfade offsets.
+    """
+    if not clips:
+        raise ValueError("No clips to stitch")
+    if len(clips) == 1:
+        import shutil
+        shutil.copy2(clips[0], output)
+        return output
+
+    probes = [_probe_stream(c) for c in clips]
+    durations: list[float] = []
+    for p in probes:
+        d = p.get("duration")
+        if d is None:
+            raise RuntimeError("crossfade requires probe-able duration on every clip")
+        durations.append(float(d))
+
+    inputs: list[str] = []
+    for c in clips:
+        inputs.extend(["-i", c])
+
+    # Build a chain of xfade/acrossfade filters. Offset for the Nth join is
+    # cumulative duration of clips 0..N-1 minus N*fade (each fade overlaps).
+    v_filters: list[str] = []
+    a_filters: list[str] = []
+    cur_v = "[0:v]"
+    cur_a = "[0:a]"
+    cum_offset = durations[0] - fade_sec
+    for i in range(1, len(clips)):
+        v_out = f"[v{i}]"
+        a_out = f"[a{i}]"
+        v_filters.append(
+            f"{cur_v}[{i}:v]xfade=transition=fade:duration={fade_sec}:offset={cum_offset:.3f}{v_out}"
+        )
+        a_filters.append(
+            f"{cur_a}[{i}:a]acrossfade=d={fade_sec}{a_out}"
+        )
+        cur_v = v_out
+        cur_a = a_out
+        cum_offset += durations[i] - fade_sec
+
+    filter_complex = ";".join(v_filters + a_filters)
+
+    _run_ffmpeg(
+        inputs + [
+            "-filter_complex", filter_complex,
+            "-map", cur_v, "-map", cur_a,
+            "-c:v", "libx264", "-preset", "fast", "-c:a", "aac",
+            output,
+        ],
+        "stitch (crossfade)",
+    )
     return output
 
 

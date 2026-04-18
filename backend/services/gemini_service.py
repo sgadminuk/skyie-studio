@@ -251,6 +251,7 @@ class GeminiService:
         prompt: str,
         *,
         image_bytes: bytes | None = None,
+        reference_image_bytes: list[bytes] | None = None,
         duration_sec: int | None = None,
         aspect_ratio: str | None = None,
         resolution: str | None = None,
@@ -261,9 +262,22 @@ class GeminiService:
     ) -> VideoResult:
         """Submit Veo 3.1 generation and poll until complete.
 
-        Works for T2V (no image) and I2V (image_bytes provided). Defaults match
-        the quality-first config in settings — no silent downgrades.
+        Three input modes (mutually exclusive on Veo 3.1):
+          - T2V: prompt only
+          - I2V (first frame): image_bytes
+          - Reference-driven (character/subject identity): reference_image_bytes
+            (1–3 images of the same person/character/product)
         """
+        if image_bytes is not None and reference_image_bytes:
+            raise GeminiInvalidInputError(
+                "Veo 3.1 rejects first-frame `image` and `reference_images` "
+                "together — pass one or the other, not both.",
+            )
+        if reference_image_bytes is not None and not (1 <= len(reference_image_bytes) <= 3):
+            raise GeminiInvalidInputError(
+                "Veo 3.1 accepts 1–3 reference images per generation.",
+            )
+
         self._preflight(user_id)
 
         duration = duration_sec or settings.GEMINI_DEFAULT_VIDEO_DURATION
@@ -278,6 +292,7 @@ class GeminiService:
             resolution=res,
             generate_audio=audio,
             negative_prompt=negative_prompt,
+            reference_image_bytes=reference_image_bytes,
         )
 
         kwargs: dict[str, Any] = {
@@ -394,19 +409,29 @@ class GeminiService:
         resolution: str,
         generate_audio: bool,
         negative_prompt: str | None,
+        reference_image_bytes: list[bytes] | None = None,
     ):
         from google.genai import types  # type: ignore
         # Veo 3.1 always generates synchronized audio — the API rejects a
         # `generate_audio` flag, so we silently drop it here. `generate_audio`
         # stays in our own request schema for forward-compat with future
         # Veo variants that may let you mute.
-        return types.GenerateVideosConfig(
+        kwargs: dict[str, Any] = dict(
             aspect_ratio=aspect_ratio,
             resolution=resolution,
             duration_seconds=duration,
             number_of_videos=1,
             negative_prompt=negative_prompt,
         )
+        if reference_image_bytes:
+            kwargs["reference_images"] = [
+                types.VideoGenerationReferenceImage(
+                    image=self._to_genai_image(b),
+                    reference_type="asset",
+                )
+                for b in reference_image_bytes
+            ]
+        return types.GenerateVideosConfig(**kwargs)
 
     async def _call_generate_content(self, contents: list[Any], config) -> Any:
         return await asyncio.to_thread(
