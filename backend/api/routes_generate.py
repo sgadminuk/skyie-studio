@@ -264,7 +264,7 @@ class GeminiVideoRequest(BaseModel):
     prompt: str = Field(..., min_length=1)
     source_image_path: str | None = None
     reference_image_paths: list[str] | None = None
-    duration_sec: int = Field(default=8, ge=2, le=8)
+    duration_sec: int = Field(default=8, ge=4, le=8)
     aspect_ratio: str = "16:9"
     resolution: str = "1080p"
     generate_audio: bool = True

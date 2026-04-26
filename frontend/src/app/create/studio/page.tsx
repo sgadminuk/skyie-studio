@@ -843,7 +843,7 @@ export default function StudioPage() {
                     <input
                       id="video-duration-slider"
                       type="range"
-                      min={2}
+                      min={4}
                       max={8}
                       step={1}
                       value={duration}
