@@ -138,21 +138,18 @@ async def retry_job(
             if cp and Path(cp).exists() and Path(cp).stat().st_size > 0:
                 completed_idxs.append(i)
     remaining_idxs = [i for i in range(len(shots)) if i not in completed_idxs]
-    if not remaining_idxs:
-        raise HTTPException(
-            status_code=400,
-            detail="All shots already completed — nothing to retry",
-        )
 
-    # Charge credits only for the shots that will actually re-render.
+    # If every shot already succeeded but the job still failed, the failure
+    # was downstream (stitch / music / manifest). Allow retry: zero Veo cost,
+    # the workflow re-runs from after the render loop.
     cost = get_credit_cost(
         "veo_multi_shot",
         {
             "shots": [shots[i] for i in remaining_idxs],
             "resolution": old_params.get("resolution") or "1080p",
         },
-    )
-    if not await check_credits(session, user.id, cost):
+    ) if remaining_idxs else 0
+    if cost > 0 and not await check_credits(session, user.id, cost):
         raise HTTPException(
             status_code=402,
             detail=f"Insufficient credits. Need {cost}, have {user.credits}",
@@ -190,14 +187,17 @@ async def retry_job(
         provider="gemini", model=settings.GEMINI_VEO_MODEL,
         idempotency_key=idempotency_key,
     )
-    await reserve_credits(
-        session, user.id, cost, job_id=uuid_mod.UUID(new_job_id),
-        description=(
-            f"Veo multi-shot retry "
-            f"({len(remaining_idxs)}/{len(shots)} shots, "
-            f"{len(completed_idxs)} reused)"
-        ),
-    )
+    # Skip the credit transaction entirely when there's nothing to charge for
+    # (stitch-only retry) — otherwise we leave 0-debit rows in the ledger.
+    if cost > 0:
+        await reserve_credits(
+            session, user.id, cost, job_id=uuid_mod.UUID(new_job_id),
+            description=(
+                f"Veo multi-shot retry "
+                f"({len(remaining_idxs)}/{len(shots)} shots, "
+                f"{len(completed_idxs)} reused)"
+            ),
+        )
     run_veo_multi_shot_task.delay(new_job_id, new_params)
     return {
         "job_id": new_job_id,
