@@ -1,13 +1,15 @@
 """Job status endpoints + WebSocket progress streaming."""
 
+import io
 import json
 import uuid as uuid_mod
 import asyncio
 import logging
 import mimetypes
+import zipfile
 from pathlib import Path
 from fastapi import APIRouter, Depends, Header, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
@@ -60,6 +62,65 @@ async def get_job_status(job_id: str):
         job["attachment_url"] = f"/api/v1/jobs/{job_id}/download"
 
     return job
+
+
+def _list_part_files(out_dir: Path, workflow: str) -> list[Path]:
+    """Per-workflow file conventions for sub-output downloads."""
+    files: list[Path] = []
+    if workflow == "avatar_pack":
+        files.extend(out_dir.glob("avatar_*.png"))
+        files.extend(out_dir.glob("avatar_*.jpg"))
+    elif workflow == "veo_multi_shot":
+        files.extend(out_dir.glob("shot_*.mp4"))
+    return sorted(files)
+
+
+@router.get("/{job_id}/download/{idx}")
+async def download_job_part(job_id: str, idx: int):
+    """Force-download a single sub-output (one avatar tile, one multi-shot clip)."""
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    workflow = job.get("workflow", "")
+    out_dir = Path(settings.OUTPUT_PATH) / job_id
+    files = _list_part_files(out_dir, workflow)
+    if idx < 0 or idx >= len(files):
+        raise HTTPException(status_code=404, detail="Part index out of range")
+    p = files[idx]
+    media_type, _ = mimetypes.guess_type(p.name)
+    return FileResponse(
+        p,
+        media_type=media_type or "application/octet-stream",
+        filename=f"{workflow}-{job_id[:8]}-{p.name}",
+    )
+
+
+@router.get("/{job_id}/download-all")
+async def download_all_parts(job_id: str):
+    """Stream a ZIP of every sub-output for multi-output workflows."""
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    workflow = job.get("workflow", "")
+    out_dir = Path(settings.OUTPUT_PATH) / job_id
+    files = _list_part_files(out_dir, workflow)
+    if not files:
+        raise HTTPException(status_code=404, detail="No files to download")
+
+    # ZIP_STORED: image/video bytes are already compressed, deflate just burns
+    # CPU. Building in-memory is fine — avatar packs are <50 MB, multi-shot
+    # clips total <100 MB.
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as zf:
+        for f in files:
+            zf.write(f, f.name)
+    buf.seek(0)
+    filename = f"{workflow}-{job_id[:8]}.zip"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/{job_id}/download")

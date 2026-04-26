@@ -16,8 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { getJob, exportVideo, retryJob, type Job, type ShotOverride } from "@/lib/api";
-import { RotateCcw } from "lucide-react";
+import { getJob, exportVideo, retryJob, downloadAsBlob, type Job, type ShotOverride } from "@/lib/api";
+import { RotateCcw, FileArchive } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useJobProgress, formatElapsed } from "@/hooks/use-job-progress";
 import { toast } from "sonner";
@@ -262,14 +262,35 @@ export default function JobDetailPage() {
         }>;
         if (!scenes.length && !status.length) return null;
         const tiles = scenes.length ? scenes : status.map(() => ({} as { label?: string; prompt?: string }));
+        const completedCount = status.filter((s) => s.status === "completed").length;
+        const handleDownloadAll = () => {
+          downloadAsBlob(
+            `${API_URL}/api/v1/jobs/${jobId}/download-all`,
+            `avatar-pack-${jobId.slice(0, 8)}.zip`,
+          ).catch(() => toast.error("ZIP download failed"));
+        };
+        const handleDownloadOne = (idx: number, ext: string) => {
+          downloadAsBlob(
+            `${API_URL}/api/v1/jobs/${jobId}/download/${idx}`,
+            `avatar-${jobId.slice(0, 8)}-${String(idx + 1).padStart(2, "0")}.${ext}`,
+          ).catch(() => toast.error("Download failed"));
+        };
         return (
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Avatars</CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                {status.filter((s) => s.status === "completed").length}/{tiles.length}{" "}
-                rendered{job.status === "processing" ? " — streaming live" : ""}
-              </p>
+            <CardHeader className="flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Avatars</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {completedCount}/{tiles.length} rendered
+                  {job.status === "processing" ? " — streaming live" : ""}
+                </p>
+              </div>
+              {completedCount > 0 && (
+                <Button size="sm" variant="outline" onClick={handleDownloadAll}>
+                  <FileArchive className="mr-2 h-4 w-4" />
+                  Download all ({completedCount}) as ZIP
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -278,19 +299,29 @@ export default function JobDetailPage() {
                   const imgUrl = s.image_path
                     ? `${API_URL}${s.image_path.replace(/^\/app/, "")}`
                     : null;
+                  const ext = (s.image_path || "").endsWith(".jpg") ? "jpg" : "png";
                   return (
                     <div
                       key={i}
-                      className="relative aspect-square rounded-md overflow-hidden border bg-muted/30"
+                      className="relative group aspect-square rounded-md overflow-hidden border bg-muted/30"
                     >
                       {imgUrl ? (
-                        <a href={imgUrl} target="_blank" rel="noreferrer">
+                        <>
                           <img
                             src={imgUrl}
                             alt={scene.label || `Avatar ${i + 1}`}
-                            className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+                            className="w-full h-full object-cover"
                           />
-                        </a>
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadOne(i, ext)}
+                            aria-label={`Download avatar ${i + 1}`}
+                            title="Download"
+                            className="absolute top-1 right-1 bg-black/70 hover:bg-black/90 rounded-md p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Download className="h-3.5 w-3.5 text-white" />
+                          </button>
+                        </>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                           {s.status === "failed" ? (
@@ -302,7 +333,7 @@ export default function JobDetailPage() {
                           )}
                         </div>
                       )}
-                      <div className="absolute bottom-0 inset-x-0 p-1.5 text-[10px] bg-gradient-to-t from-black/70 to-transparent text-white truncate">
+                      <div className="absolute bottom-0 inset-x-0 p-1.5 text-[10px] bg-gradient-to-t from-black/70 to-transparent text-white truncate pointer-events-none">
                         {scene.label || `Avatar ${i + 1}`}
                       </div>
                     </div>
@@ -341,11 +372,17 @@ export default function JobDetailPage() {
           )}
           <CardContent className="py-4">
             <div className="flex gap-2 flex-wrap items-center">
-              <Button asChild>
-                <a href={attachmentUrl ?? downloadUrl}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Download
-                </a>
+              <Button
+                onClick={() => {
+                  if (!attachmentUrl && !downloadUrl) return;
+                  const url = (attachmentUrl ?? downloadUrl) as string;
+                  const ext = (job.output_path || "output.bin").split(".").pop();
+                  const filename = `${job.workflow}-${jobId.slice(0, 8)}.${ext}`;
+                  downloadAsBlob(url, filename).catch(() => toast.error("Download failed"));
+                }}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download
               </Button>
               {!IMAGE_WORKFLOWS.has(job.workflow) && (
                 <Button

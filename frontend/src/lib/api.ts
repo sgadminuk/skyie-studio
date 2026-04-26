@@ -370,6 +370,34 @@ export async function getJob(jobId: string) {
   return data;
 }
 
+/**
+ * Force a file to actually download (not open in a new tab).
+ *
+ * Reasoning: cross-origin <a href download> attribute is ignored by browsers
+ * even when the server returns Content-Disposition: attachment. Safari
+ * specifically prefers to play mp4s inline. Fetching as a blob keeps the URL
+ * same-origin (blob:) so the download attribute is honoured everywhere.
+ */
+export async function downloadAsBlob(url: string, filename: string) {
+  const accessToken =
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem("skyie_access_token")
+      : null;
+  const res = await fetch(url, {
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+  });
+  if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
 export interface RetryResult {
   job_id: string;
   workflow: string;
