@@ -8,3 +8,5 @@ ignore = [
 
 [lint.per-file-ignores]
 "alembic/*" = ["F401"]
+# Static avatar-pack prompt presets — long-form copy where wrapping hurts readability.
+"services/prompt_enhance_service.py" = ["E501"]
