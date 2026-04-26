@@ -16,7 +16,7 @@ from services.job_queue import (
     run_talking_head_task, run_broll_task, run_full_production_task,
     run_shots_task, run_v2v_task, run_extend_task, run_director_task,
     run_gemini_image_task, run_gemini_image_edit_task, run_gemini_video_task,
-    run_veo_multi_shot_task,
+    run_veo_multi_shot_task, run_avatar_pack_task,
 )
 from services.credit_service import get_credit_cost, check_credits, reserve_credits
 from services.gemini_service import estimate_video_cost_usd
@@ -557,4 +557,75 @@ async def generate_veo_multi_shot(
         "status": "queued",
         "credits_used": cost,
         "shot_count": len(request.shots),
+    }
+
+
+# ── Avatar pack ────────────────────────────────────────────────────────────
+
+
+class AvatarPackRequest(BaseModel):
+    reference_image_path: str = Field(..., min_length=1)
+    count: int = Field(default=30, ge=1, le=60)
+    aspect_ratio: str = "1:1"
+    brief: str = ""
+
+
+@router.post("/avatar-pack/estimate")
+async def estimate_avatar_pack(
+    request: AvatarPackRequest,
+    user: User = Depends(get_current_user),
+):
+    """Cost estimate for an avatar-pack run."""
+    credits = get_credit_cost("avatar_pack", request.model_dump())
+    estimated_cost_usd = round(request.count * 0.039, 4)
+    return {
+        "count": request.count,
+        "credits_required": credits,
+        "estimated_cost_usd": estimated_cost_usd,
+        "user_credits": user.credits,
+        "sufficient": user.credits >= credits,
+    }
+
+
+@router.post("/avatar-pack")
+async def generate_avatar_pack(
+    request: AvatarPackRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Generate N diverse Nano Banana avatars from a single reference image."""
+    if idempotency_key:
+        existing = find_job_by_idempotency_key(str(user.id), idempotency_key)
+        if existing:
+            return _idempotent_response(existing)
+
+    params = request.model_dump()
+    params["_user_id"] = str(user.id)
+
+    cost = get_credit_cost("avatar_pack", params)
+    if not await check_credits(session, user.id, cost):
+        raise HTTPException(
+            status_code=402,
+            detail=f"Insufficient credits. Need {cost}, have {user.credits}",
+        )
+
+    job_id = create_job(
+        "avatar_pack", params, user_id=str(user.id),
+        provider="gemini", model=settings.GEMINI_IMAGE_MODEL,
+        idempotency_key=idempotency_key,
+    )
+    await reserve_credits(
+        session, user.id, cost, job_id=uuid_mod.UUID(job_id),
+        description=f"Avatar pack ({request.count} variants)",
+    )
+    run_avatar_pack_task.delay(job_id, params)
+    return {
+        "job_id": job_id,
+        "workflow": "avatar_pack",
+        "provider": "gemini",
+        "model": settings.GEMINI_IMAGE_MODEL,
+        "status": "queued",
+        "credits_used": cost,
+        "count": request.count,
     }

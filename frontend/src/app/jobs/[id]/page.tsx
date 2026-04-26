@@ -35,6 +35,8 @@ const WORKFLOW_LABELS: Record<string, string> = {
   gemini_image: "Gemini Image",
   gemini_image_edit: "Gemini Image Edit",
   gemini_video: "Veo 3.1 Video",
+  veo_multi_shot: "Veo 3.1 Multi-Shot",
+  avatar_pack: "AI Avatar Pack",
 };
 
 const IMAGE_WORKFLOWS = new Set(["gemini_image", "gemini_image_edit"]);
@@ -246,8 +248,74 @@ export default function JobDetailPage() {
         </Card>
       )}
 
+      {/* Avatar pack gallery — renders during processing too so the user
+          can watch tiles fill in. */}
+      {job.workflow === "avatar_pack" && (() => {
+        const scenes = ((job.params as Record<string, unknown>)?.scenes ?? []) as Array<{
+          label?: string;
+          prompt?: string;
+        }>;
+        const status = ((job.params as Record<string, unknown>)?.scenes_status ?? []) as Array<{
+          status?: string;
+          image_path?: string;
+          error?: string;
+        }>;
+        if (!scenes.length && !status.length) return null;
+        const tiles = scenes.length ? scenes : status.map(() => ({} as { label?: string; prompt?: string }));
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Avatars</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                {status.filter((s) => s.status === "completed").length}/{tiles.length}{" "}
+                rendered{job.status === "processing" ? " — streaming live" : ""}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {tiles.map((scene, i) => {
+                  const s = status[i] || {};
+                  const imgUrl = s.image_path
+                    ? `${API_URL}${s.image_path.replace(/^\/app/, "")}`
+                    : null;
+                  return (
+                    <div
+                      key={i}
+                      className="relative aspect-square rounded-md overflow-hidden border bg-muted/30"
+                    >
+                      {imgUrl ? (
+                        <a href={imgUrl} target="_blank" rel="noreferrer">
+                          <img
+                            src={imgUrl}
+                            alt={scene.label || `Avatar ${i + 1}`}
+                            className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+                          />
+                        </a>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                          {s.status === "failed" ? (
+                            <XCircle className="h-6 w-6 text-destructive" />
+                          ) : s.status === "processing" ? (
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                          ) : (
+                            <Clock className="h-5 w-5 opacity-50" />
+                          )}
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 inset-x-0 p-1.5 text-[10px] bg-gradient-to-t from-black/70 to-transparent text-white truncate">
+                        {scene.label || `Avatar ${i + 1}`}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Output Viewer */}
-      {job.status === "completed" && downloadUrl && (
+      {job.status === "completed" && downloadUrl && job.workflow !== "avatar_pack" && (
         <Card className="overflow-hidden">
           {IMAGE_WORKFLOWS.has(job.workflow) ? (
             <div className="bg-black flex items-center justify-center">

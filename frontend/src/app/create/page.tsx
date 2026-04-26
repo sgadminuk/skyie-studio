@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mic, Film, Video, ArrowRight, ImagePlus, Sparkles, RefreshCw, Layers } from "lucide-react";
+import { Mic, Film, Video, ArrowRight, ImagePlus, Sparkles, RefreshCw, Layers, UserCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -28,6 +28,21 @@ const WORKFLOWS = [
       "Gemini Flash prompt assist",
     ],
     credits: "~60–480 credits",
+  },
+  {
+    href: "/create/avatar-pack",
+    icon: UserCircle,
+    title: "AI Avatar Pack",
+    badge: "New",
+    description:
+      "Upload one photo, get a pack of 10–60 diverse portraits — LinkedIn, beach, party, traditional, gym, group shots — all the same person, different scenes, expressions, outfits.",
+    features: [
+      "One reference photo",
+      "Auto-generated diverse prompts (Gemini Flash)",
+      "Identity-preserving (Nano Banana)",
+      "Per-image retry & resume",
+    ],
+    credits: "8 credits per avatar",
   },
   {
     href: "/create/director",

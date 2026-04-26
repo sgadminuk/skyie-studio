@@ -338,6 +338,13 @@ def run_gemini_video_task(self, job_id: str, params: dict):
     _run_workflow(job_id, params, execute_gemini_video)
 
 
+@celery_app.task(name="skyie.run_avatar_pack", bind=True)
+def run_avatar_pack_task(self, job_id: str, params: dict):
+    """Generate N diverse Nano Banana avatars from a single reference image."""
+    from workflows.avatar_pack import execute_avatar_pack
+    _run_workflow(job_id, params, execute_avatar_pack)
+
+
 @celery_app.task(name="skyie.run_veo_multi_shot", bind=True)
 def run_veo_multi_shot_task(self, job_id: str, params: dict):
     """Render N Veo 3.1 shots and stitch them into a single MP4."""

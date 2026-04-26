@@ -304,6 +304,38 @@ export async function generateVeoMultiShot(params: VeoMultiShotParams) {
   return data as { job_id: string; credits_used: number; shot_count: number };
 }
 
+// ── Avatar pack ───────────────────────────────────────────────────────────
+
+export interface AvatarPackParams {
+  reference_image_path: string;
+  count?: number;
+  aspect_ratio?: string;
+  brief?: string;
+}
+
+export interface AvatarPackEstimate {
+  count: number;
+  credits_required: number;
+  estimated_cost_usd: number;
+  user_credits: number;
+  sufficient: boolean;
+}
+
+export async function estimateAvatarPack(params: AvatarPackParams) {
+  const { data } = await api.post<AvatarPackEstimate>(
+    "/generate/avatar-pack/estimate",
+    params,
+  );
+  return data;
+}
+
+export async function generateAvatarPack(params: AvatarPackParams) {
+  const { data } = await api.post("/generate/avatar-pack", params, {
+    headers: { "Idempotency-Key": makeIdempotencyKey() },
+  });
+  return data as { job_id: string; credits_used: number; count: number };
+}
+
 // ── Jobs ────────────────────────────────────────────────────────────────────
 
 export interface Job {

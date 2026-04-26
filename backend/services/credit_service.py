@@ -26,6 +26,8 @@ CREDIT_COSTS: dict[str, int] = {
     "gemini_video": 0,
     # Veo 3.1 multi-shot — computed below as the sum of per-shot Veo costs
     "veo_multi_shot": 0,
+    # Avatar pack — computed below as count × gemini_image base
+    "avatar_pack": 0,
 }
 
 # ── Veo 3.1 per-second credit rates ─────────────────────────────────────────
@@ -49,6 +51,14 @@ def _gemini_video_credits(params: dict) -> int:
     # Always round up — never under-charge.
     import math
     return int(math.ceil(duration * base_per_sec * mult))
+
+
+def _avatar_pack_credits(params: dict) -> int:
+    """Avatar pack cost: count × gemini_image base. Uses the existing single-image
+    flat rate so the pack price is predictable from the count alone.
+    """
+    count = int(params.get("count") or 30)
+    return CREDIT_COSTS["gemini_image"] * count
 
 
 def _veo_multi_shot_credits(params: dict) -> int:
@@ -86,6 +96,8 @@ def get_credit_cost(workflow: str, params: dict | None = None) -> int:
             return _gemini_video_credits(params)
         elif workflow == "veo_multi_shot":
             return _veo_multi_shot_credits(params)
+        elif workflow == "avatar_pack":
+            return _avatar_pack_credits(params)
         elif workflow == "gemini_image":
             refs = params.get("reference_image_paths") or []
             # Multi-image composition costs more tokens on Nano Banana
