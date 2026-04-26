@@ -211,6 +211,7 @@ export interface GeminiImageEditParams {
 export interface GeminiVideoParams {
   prompt: string;
   source_image_path?: string | null;
+  reference_image_paths?: string[] | null;
   duration_sec?: number;
   aspect_ratio?: string;
   resolution?: string;
@@ -322,6 +323,7 @@ export interface Job {
   error_code?: string;
   cost_usd?: number | null;
   download_url?: string;
+  attachment_url?: string;
 }
 
 export async function getJobs(limit = 50) {

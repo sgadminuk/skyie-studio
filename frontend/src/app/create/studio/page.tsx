@@ -92,6 +92,10 @@ export default function StudioPage() {
   const [sourceImage, setSourceImage] = useState<UploadedImage | null>(null);
   // compose multi-image (up to 10)
   const [composeImages, setComposeImages] = useState<UploadedImage[]>([]);
+  // Veo 3.1: image mode chooses between start-frame I2V and character references
+  const [videoMode, setVideoMode] = useState<"none" | "start" | "character">("none");
+  // Veo 3.1 character reference images (1–3, mutually exclusive with start frame)
+  const [characterRefs, setCharacterRefs] = useState<UploadedImage[]>([]);
 
   // image + video controls
   const [aspectRatio, setAspectRatio] = useState("16:9");
@@ -175,6 +179,37 @@ export default function StudioPage() {
     setComposeImages((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  async function handleCharacterUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const remaining = 3 - characterRefs.length;
+    if (files.length > remaining) {
+      toast.error(`Up to 3 character photos. ${remaining} slot${remaining === 1 ? "" : "s"} left.`);
+      return;
+    }
+    setUploading(true);
+    const uploaded: UploadedImage[] = [];
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) {
+        toast.error(`${file.name} is not an image`);
+        continue;
+      }
+      try {
+        const result = await uploadAvatar(file);
+        uploaded.push({ path: result.path, preview: URL.createObjectURL(file) });
+      } catch {
+        toast.error(`Failed to upload ${file.name}`);
+      }
+    }
+    setCharacterRefs((prev) => [...prev, ...uploaded]);
+    setUploading(false);
+    e.target.value = "";
+  }
+
+  function removeCharacterRef(idx: number) {
+    setCharacterRefs((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   async function handleSuggestPrompt() {
     if (!prompt.trim()) {
       toast.error("Type a brief first — even a few words is enough");
@@ -203,6 +238,8 @@ export default function StudioPage() {
     if (!prompt.trim()) return false;
     if (intent === "edit" && !sourceImage) return false;
     if (intent === "compose" && composeImages.length < 2) return false;
+    if (intent === "video" && videoMode === "start" && !sourceImage) return false;
+    if (intent === "video" && videoMode === "character" && characterRefs.length === 0) return false;
     return true;
   }
 
@@ -241,9 +278,15 @@ export default function StudioPage() {
           ...overlayPayload,
         });
       } else {
+        const sourcePath = videoMode === "start" ? sourceImage?.path ?? null : null;
+        const refPaths =
+          videoMode === "character" && characterRefs.length > 0
+            ? characterRefs.map((i) => i.path)
+            : null;
         result = await generateGeminiVideo({
           prompt,
-          source_image_path: sourceImage?.path ?? null,
+          source_image_path: sourcePath,
+          reference_image_paths: refPaths,
           duration_sec: duration,
           aspect_ratio: aspectRatio,
           resolution,
@@ -432,13 +475,11 @@ export default function StudioPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Source image / compose inputs */}
-        {(intent === "edit" || intent === "video") && (
+        {/* Source image — edit intent only */}
+        {intent === "edit" && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">
-                {intent === "edit" ? "Source Image" : "Starting Image (optional)"}
-              </CardTitle>
+              <CardTitle className="text-base">Source Image</CardTitle>
             </CardHeader>
             <CardContent>
               <input
@@ -478,12 +519,165 @@ export default function StudioPage() {
                   ) : (
                     <>
                       <Upload className="h-5 w-5" />
-                      <span className="text-xs mt-1">
-                        {intent === "edit" ? "Upload image to edit" : "Upload reference (optional)"}
-                      </span>
+                      <span className="text-xs mt-1">Upload image to edit</span>
                     </>
                   )}
                 </button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Veo 3.1: image input mode (none / start frame / character refs) */}
+        {intent === "video" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Image Input</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Choose how Veo should use a photo. Start frame animates from the
+                exact image. Character references keep the same person across a
+                fully new scene described by your prompt.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    { id: "none", label: "Text only", desc: "No image input" },
+                    { id: "start", label: "Start frame", desc: "Animate from this image (1)" },
+                    { id: "character", label: "Character", desc: "Keep this person (1–3)" },
+                  ] as const
+                ).map((m) => {
+                  const active = videoMode === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        setVideoMode(m.id);
+                        if (m.id !== "start") setSourceImage(null);
+                        if (m.id !== "character") setCharacterRefs([]);
+                      }}
+                      className={`flex flex-col items-start gap-1 p-3 rounded-lg border text-left transition-all ${
+                        active
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/40"
+                      }`}
+                    >
+                      <span className="text-sm font-medium">{m.label}</span>
+                      <span className="text-[10px] text-muted-foreground leading-tight">
+                        {m.desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {videoMode === "start" && (
+                <div>
+                  <input
+                    ref={singleInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleSingleUpload}
+                    aria-label="Upload start frame"
+                  />
+                  {sourceImage ? (
+                    <div className="relative inline-block">
+                      <img
+                        src={sourceImage.preview}
+                        alt="start frame"
+                        className="max-h-56 rounded-md border"
+                      />
+                      <button
+                        type="button"
+                        aria-label="Remove start frame"
+                        title="Remove"
+                        className="absolute top-1 right-1 bg-black/60 rounded-full p-1"
+                        onClick={() => setSourceImage(null)}
+                      >
+                        <X className="h-3 w-3 text-white" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="h-32 w-full border-2 border-dashed rounded-md flex flex-col items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                      onClick={() => singleInputRef.current?.click()}
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Upload className="h-5 w-5" />
+                          <span className="text-xs mt-1">Upload start frame</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {videoMode === "character" && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-muted-foreground">
+                      Upload 1–3 photos of the same person/subject. Different
+                      angles and expressions improve identity stability.
+                    </p>
+                    <Badge variant="secondary" className="text-xs">
+                      {characterRefs.length}/3
+                    </Badge>
+                  </div>
+                  <input
+                    ref={multiInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleCharacterUpload}
+                    aria-label="Upload character reference images"
+                  />
+                  <div className="grid grid-cols-3 gap-2">
+                    {characterRefs.map((img, idx) => (
+                      <div key={idx} className="relative group">
+                        <img
+                          src={img.preview}
+                          alt={`character ref ${idx + 1}`}
+                          className="h-32 w-full object-cover rounded-md border"
+                        />
+                        <button
+                          type="button"
+                          aria-label={`Remove character reference ${idx + 1}`}
+                          title="Remove"
+                          className="absolute top-1 right-1 bg-black/60 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => removeCharacterRef(idx)}
+                        >
+                          <X className="h-3 w-3 text-white" />
+                        </button>
+                      </div>
+                    ))}
+                    {characterRefs.length < 3 && (
+                      <button
+                        type="button"
+                        className="h-32 border-2 border-dashed rounded-md flex flex-col items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                        onClick={() => multiInputRef.current?.click()}
+                        disabled={uploading}
+                      >
+                        {uploading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" />
+                            <span className="text-[10px] mt-0.5">Add</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

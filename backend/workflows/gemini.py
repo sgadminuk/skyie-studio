@@ -175,7 +175,15 @@ async def execute_gemini_video(job_id: str, params: dict) -> str:
         raise ValueError("prompt is required")
 
     source_image_path = params.get("source_image_path")
+    reference_paths = params.get("reference_image_paths") or []
+    if source_image_path and reference_paths:
+        raise ValueError(
+            "Pass either source_image_path or reference_image_paths, not both",
+        )
     image_bytes = _load_image_bytes(source_image_path) if source_image_path else None
+    reference_bytes = (
+        [_load_image_bytes(p) for p in reference_paths] if reference_paths else None
+    )
     user_id = params.get("_user_id")
 
     update_job(job_id, progress=5, step="Submitting to Veo 3.1")
@@ -186,6 +194,7 @@ async def execute_gemini_video(job_id: str, params: dict) -> str:
         result = await service.generate_video(
             prompt,
             image_bytes=image_bytes,
+            reference_image_bytes=reference_bytes,
             duration_sec=params.get("duration_sec"),
             aspect_ratio=params.get("aspect_ratio"),
             resolution=params.get("resolution"),

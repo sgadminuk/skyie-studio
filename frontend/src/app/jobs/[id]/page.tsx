@@ -147,6 +147,18 @@ export default function JobDetailPage() {
   const downloadUrl = job.download_url
     ? `${API_URL}${job.download_url}`
     : null;
+  // attachment_url is served with Content-Disposition: attachment so the browser
+  // saves the file rather than playing it inline (required cross-origin where
+  // the <a download> attribute is ignored).
+  const attachmentUrl = job.attachment_url
+    ? `${API_URL}${job.attachment_url}`
+    : downloadUrl;
+  const aspectClass = (() => {
+    const ar = (job.params as Record<string, unknown>)?.aspect_ratio;
+    if (ar === "9:16") return "aspect-[9/16] max-w-sm";
+    if (ar === "1:1") return "aspect-square max-w-xl";
+    return "aspect-video";
+  })();
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -213,7 +225,9 @@ export default function JobDetailPage() {
               />
             </div>
           ) : (
-            <div className="aspect-video bg-black flex items-center justify-center">
+            <div
+              className={`bg-black flex items-center justify-center mx-auto max-h-[80vh] ${aspectClass}`}
+            >
               <video
                 src={downloadUrl}
                 controls
@@ -227,7 +241,7 @@ export default function JobDetailPage() {
           <CardContent className="py-4">
             <div className="flex gap-2 flex-wrap items-center">
               <Button asChild>
-                <a href={downloadUrl} download>
+                <a href={attachmentUrl ?? downloadUrl}>
                   <Download className="mr-2 h-4 w-4" />
                   Download
                 </a>

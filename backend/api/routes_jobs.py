@@ -3,7 +3,9 @@
 import json
 import asyncio
 import logging
+from pathlib import Path
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi.responses import FileResponse
 from services.job_queue import get_job, list_jobs, redis_client
 from services.storage_service import get_asset_url
 
@@ -29,8 +31,30 @@ async def get_job_status(job_id: str):
     # Add download URL if completed
     if job.get("output_path"):
         job["download_url"] = get_asset_url(job["output_path"])
+        job["attachment_url"] = f"/api/v1/jobs/{job_id}/download"
 
     return job
+
+
+@router.get("/{job_id}/download")
+async def download_job_output(job_id: str):
+    """Force-download the job output with Content-Disposition: attachment.
+
+    The static `/assets/...` route serves files inline; browsers ignore the
+    `download` attribute on cross-origin links (skyie.studio → api.skyie.studio),
+    so we need a dedicated endpoint that sets the attachment header.
+    """
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    output_path = job.get("output_path")
+    if not output_path:
+        raise HTTPException(status_code=404, detail="Job has no output yet")
+    p = Path(output_path)
+    if not p.exists():
+        raise HTTPException(status_code=410, detail="Output file no longer on disk")
+    filename = f"{job.get('workflow', 'output')}-{job_id[:8]}{p.suffix}"
+    return FileResponse(p, media_type="application/octet-stream", filename=filename)
 
 
 @router.websocket("/{job_id}/ws")
