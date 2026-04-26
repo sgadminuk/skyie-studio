@@ -16,8 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { getJob, exportVideo, retryJob, type Job } from "@/lib/api";
+import { getJob, exportVideo, retryJob, type Job, type ShotOverride } from "@/lib/api";
 import { RotateCcw } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { useJobProgress, formatElapsed } from "@/hooks/use-job-progress";
 import { toast } from "sonner";
 
@@ -81,6 +82,8 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  // Editable per-shot prompt overrides for the retry flow (key = shot idx).
+  const [retryEdits, setRetryEdits] = useState<Record<number, string>>({});
 
   const isActive =
     job?.status === "queued" || job?.status === "processing";
@@ -128,7 +131,16 @@ export default function JobDetailPage() {
     if (retrying) return;
     setRetrying(true);
     try {
-      const result = await retryJob(jobId);
+      // Build the override payload from any prompts the user has edited.
+      const shots = ((job?.params as Record<string, unknown>)?.shots ??
+        []) as Array<{ prompt?: string }>;
+      const overrides: ShotOverride[] = Object.entries(retryEdits)
+        .map(([k, v]) => ({ idx: Number(k), prompt: v.trim() }))
+        .filter(
+          (o) => o.prompt && o.prompt !== (shots[o.idx]?.prompt ?? "").trim(),
+        );
+
+      const result = await retryJob(jobId, overrides.length ? overrides : undefined);
       toast.success(
         `Retrying ${result.shots_to_render} shot${result.shots_to_render === 1 ? "" : "s"} ` +
           `(${result.shots_resumed} reused). ${result.credits_used} credits.`,
@@ -315,23 +327,77 @@ export default function JobDetailPage() {
                 <p className="text-sm text-muted-foreground">{job.error}</p>
               </>
             )}
-            {job.workflow === "veo_multi_shot" && (
-              <div className="pt-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={retrying}
-                  onClick={handleRetry}
-                >
-                  <RotateCcw className={`mr-2 h-4 w-4 ${retrying ? "animate-spin" : ""}`} />
-                  {retrying ? "Retrying…" : "Retry failed shots"}
-                </Button>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Reuses any successful clips on disk — credits charged only for
-                  shots that need re-rendering.
-                </p>
-              </div>
-            )}
+            {job.workflow === "veo_multi_shot" && (() => {
+              const shotsList = ((job.params as Record<string, unknown>)?.shots ??
+                []) as Array<{ prompt?: string }>;
+              const shotsStatus = ((job.params as Record<string, unknown>)
+                ?.shots_status ?? []) as Array<{
+                status?: string;
+                error?: string;
+              }>;
+              const incompleteIdxs = shotsList
+                .map((_, i) => i)
+                .filter((i) => shotsStatus[i]?.status !== "completed");
+              return (
+                <div className="pt-2 space-y-3">
+                  {incompleteIdxs.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-medium text-foreground">
+                        Edit prompts before retrying (optional)
+                      </p>
+                      {incompleteIdxs.map((idx) => {
+                        const original = shotsList[idx]?.prompt ?? "";
+                        const status = shotsStatus[idx];
+                        return (
+                          <div key={idx} className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium">
+                                Shot {idx + 1}
+                              </span>
+                              <Badge variant="outline" className="text-[10px]">
+                                {status?.status ?? "queued"}
+                              </Badge>
+                            </div>
+                            {status?.error && (
+                              <p className="text-[11px] text-destructive/80 font-mono">
+                                {status.error}
+                              </p>
+                            )}
+                            <Textarea
+                              value={retryEdits[idx] ?? original}
+                              onChange={(e) =>
+                                setRetryEdits((prev) => ({
+                                  ...prev,
+                                  [idx]: e.target.value,
+                                }))
+                              }
+                              rows={3}
+                              className="text-sm"
+                              placeholder="Shot prompt"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={retrying}
+                    onClick={handleRetry}
+                  >
+                    <RotateCcw
+                      className={`mr-2 h-4 w-4 ${retrying ? "animate-spin" : ""}`}
+                    />
+                    {retrying ? "Retrying…" : "Retry failed shots"}
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    Successful clips are reused — credits charged only for shots
+                    that re-render. Edit prompts above if a shot was blocked.
+                  </p>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       )}

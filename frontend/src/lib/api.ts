@@ -347,8 +347,19 @@ export interface RetryResult {
   shots_to_render: number;
 }
 
-export async function retryJob(jobId: string) {
-  const { data } = await api.post<RetryResult>(`/jobs/${jobId}/retry`, undefined, {
+export interface ShotOverride {
+  idx: number;
+  prompt?: string;
+  negative_prompt?: string | null;
+}
+
+export async function retryJob(
+  jobId: string,
+  overrides?: ShotOverride[],
+) {
+  const body =
+    overrides && overrides.length > 0 ? { shots_override: overrides } : undefined;
+  const { data } = await api.post<RetryResult>(`/jobs/${jobId}/retry`, body, {
     headers: { "Idempotency-Key": crypto.randomUUID() },
   });
   return data;

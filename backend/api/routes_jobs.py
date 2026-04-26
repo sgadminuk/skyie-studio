@@ -8,6 +8,7 @@ import mimetypes
 from pathlib import Path
 from fastapi import APIRouter, Depends, Header, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
 from db.base import get_session
@@ -23,6 +24,16 @@ from services.job_queue import (
     run_veo_multi_shot_task,
 )
 from services.storage_service import get_asset_url
+
+
+class ShotOverride(BaseModel):
+    idx: int = Field(..., ge=0)
+    prompt: str | None = None
+    negative_prompt: str | None = None
+
+
+class RetryRequest(BaseModel):
+    shots_override: list[ShotOverride] | None = None
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +90,7 @@ async def download_job_output(job_id: str):
 @router.post("/{job_id}/retry")
 async def retry_job(
     job_id: str,
+    request: RetryRequest | None = None,
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
@@ -150,6 +162,28 @@ async def retry_job(
     # the prior output dir so it can copy the completed clips over.
     new_params = {k: v for k, v in old_params.items() if k != "shots_status"}
     new_params["_resume_from_job_id"] = job_id
+
+    # Apply user-provided prompt edits to the still-to-render shots. Reject
+    # overrides aimed at completed shots — those clips are reused as-is and
+    # editing their prompts would silently do nothing.
+    if request and request.shots_override:
+        new_shots = [dict(s) for s in (new_params.get("shots") or [])]
+        remaining_set = set(remaining_idxs)
+        for ov in request.shots_override:
+            if ov.idx not in remaining_set:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Cannot override shot {ov.idx + 1}: it already completed "
+                        "(its clip is reused on retry)."
+                    ),
+                )
+            target = new_shots[ov.idx]
+            if ov.prompt is not None:
+                target["prompt"] = ov.prompt
+            if ov.negative_prompt is not None:
+                target["negative_prompt"] = ov.negative_prompt
+        new_params["shots"] = new_shots
 
     new_job_id = create_job(
         "veo_multi_shot", new_params, user_id=str(user.id),
