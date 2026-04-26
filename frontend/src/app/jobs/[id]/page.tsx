@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { getJob, exportVideo, type Job } from "@/lib/api";
+import { getJob, exportVideo, retryJob, type Job } from "@/lib/api";
+import { RotateCcw } from "lucide-react";
 import { useJobProgress, formatElapsed } from "@/hooks/use-job-progress";
 import { toast } from "sonner";
 
@@ -79,6 +80,7 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   const isActive =
     job?.status === "queued" || job?.status === "processing";
@@ -119,6 +121,25 @@ export default function JobDetailPage() {
       toast.error("Export failed");
     } finally {
       setExporting(false);
+    }
+  }
+
+  async function handleRetry() {
+    if (retrying) return;
+    setRetrying(true);
+    try {
+      const result = await retryJob(jobId);
+      toast.success(
+        `Retrying ${result.shots_to_render} shot${result.shots_to_render === 1 ? "" : "s"} ` +
+          `(${result.shots_resumed} reused). ${result.credits_used} credits.`,
+      );
+      router.push(`/jobs/${result.job_id}`);
+    } catch (err) {
+      const detail =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+        "Retry failed";
+      toast.error(detail);
+      setRetrying(false);
     }
   }
 
@@ -293,6 +314,23 @@ export default function JobDetailPage() {
                 <p className="text-sm font-medium text-destructive">Error</p>
                 <p className="text-sm text-muted-foreground">{job.error}</p>
               </>
+            )}
+            {job.workflow === "veo_multi_shot" && (
+              <div className="pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={retrying}
+                  onClick={handleRetry}
+                >
+                  <RotateCcw className={`mr-2 h-4 w-4 ${retrying ? "animate-spin" : ""}`} />
+                  {retrying ? "Retrying…" : "Retry failed shots"}
+                </Button>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Reuses any successful clips on disk — credits charged only for
+                  shots that need re-rendering.
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>

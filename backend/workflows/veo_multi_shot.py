@@ -250,6 +250,22 @@ async def execute_veo_multi_shot(job_id: str, params: dict) -> str:
     out_dir = Path(settings.OUTPUT_PATH) / job_id
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Resume: pull successful shots from a prior failed job's output dir so the
+    # render-skip detection finds them and we don't pay Veo for them again.
+    resume_from = params.get("_resume_from_job_id")
+    if resume_from:
+        import shutil as _shutil
+        src_dir = Path(settings.OUTPUT_PATH) / str(resume_from)
+        if src_dir.exists() and src_dir.is_dir():
+            for src_clip in src_dir.glob("shot_*.mp4"):
+                dst = out_dir / src_clip.name
+                if not dst.exists():
+                    _shutil.copy2(src_clip, dst)
+            logger.info(
+                "veo_multi_shot resume: copied clips from %s into %s",
+                resume_from, job_id,
+            )
+
     shots_status: list[dict] = [
         {"idx": i, "status": "queued", "progress": 0} for i in range(len(shots))
     ]

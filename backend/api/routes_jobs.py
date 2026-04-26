@@ -1,13 +1,27 @@
 """Job status endpoints + WebSocket progress streaming."""
 
 import json
+import uuid as uuid_mod
 import asyncio
 import logging
 import mimetypes
 from pathlib import Path
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, Depends, Header, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import FileResponse
-from services.job_queue import get_job, list_jobs, redis_client
+from sqlalchemy.ext.asyncio import AsyncSession
+from config import settings
+from db.base import get_session
+from db.models import User
+from api.dependencies import get_current_user
+from services.credit_service import check_credits, get_credit_cost, reserve_credits
+from services.job_queue import (
+    create_job,
+    find_job_by_idempotency_key,
+    get_job,
+    list_jobs,
+    redis_client,
+    run_veo_multi_shot_task,
+)
 from services.storage_service import get_asset_url
 
 logger = logging.getLogger(__name__)
@@ -60,6 +74,105 @@ async def download_job_output(job_id: str):
     filename = f"{job.get('workflow', 'output')}-{job_id[:8]}{p.suffix}"
     media_type, _ = mimetypes.guess_type(p.name)
     return FileResponse(p, media_type=media_type or "application/octet-stream", filename=filename)
+
+
+@router.post("/{job_id}/retry")
+async def retry_job(
+    job_id: str,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Retry a failed multi-shot job, reusing successful clips on disk.
+
+    Only the shots that didn't produce a clip are re-rendered, and the user
+    is charged credits only for those. Currently scoped to veo_multi_shot —
+    other workflows would need their own resume semantics.
+    """
+    if idempotency_key:
+        existing = find_job_by_idempotency_key(str(user.id), idempotency_key)
+        if existing:
+            return {
+                "job_id": existing["id"],
+                "workflow": existing["workflow"],
+                "status": existing.get("status", "queued"),
+                "idempotent_replay": True,
+            }
+
+    old = get_job(job_id)
+    if not old:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if old.get("workflow") != "veo_multi_shot":
+        raise HTTPException(status_code=400, detail="Only multi-shot jobs support retry")
+    if old.get("status") != "failed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot retry a job in status {old.get('status')}",
+        )
+    old_params = old.get("params") or {}
+    if old_params.get("_user_id") != str(user.id):
+        raise HTTPException(status_code=403, detail="Not your job")
+
+    shots = old_params.get("shots") or []
+    if not shots:
+        raise HTTPException(status_code=400, detail="Original job had no shots")
+
+    # A shot is "reusable" iff its clip is still on disk and non-empty.
+    shots_status = old_params.get("shots_status") or []
+    completed_idxs: list[int] = []
+    for i, s in enumerate(shots_status[: len(shots)]):
+        if s.get("status") == "completed":
+            cp = s.get("clip_path")
+            if cp and Path(cp).exists() and Path(cp).stat().st_size > 0:
+                completed_idxs.append(i)
+    remaining_idxs = [i for i in range(len(shots)) if i not in completed_idxs]
+    if not remaining_idxs:
+        raise HTTPException(
+            status_code=400,
+            detail="All shots already completed — nothing to retry",
+        )
+
+    # Charge credits only for the shots that will actually re-render.
+    cost = get_credit_cost(
+        "veo_multi_shot",
+        {
+            "shots": [shots[i] for i in remaining_idxs],
+            "resolution": old_params.get("resolution") or "1080p",
+        },
+    )
+    if not await check_credits(session, user.id, cost):
+        raise HTTPException(
+            status_code=402,
+            detail=f"Insufficient credits. Need {cost}, have {user.credits}",
+        )
+
+    # New job: same params, drop the stale shots_status, point the worker at
+    # the prior output dir so it can copy the completed clips over.
+    new_params = {k: v for k, v in old_params.items() if k != "shots_status"}
+    new_params["_resume_from_job_id"] = job_id
+
+    new_job_id = create_job(
+        "veo_multi_shot", new_params, user_id=str(user.id),
+        provider="gemini", model=settings.GEMINI_VEO_MODEL,
+        idempotency_key=idempotency_key,
+    )
+    await reserve_credits(
+        session, user.id, cost, job_id=uuid_mod.UUID(new_job_id),
+        description=(
+            f"Veo multi-shot retry "
+            f"({len(remaining_idxs)}/{len(shots)} shots, "
+            f"{len(completed_idxs)} reused)"
+        ),
+    )
+    run_veo_multi_shot_task.delay(new_job_id, new_params)
+    return {
+        "job_id": new_job_id,
+        "workflow": "veo_multi_shot",
+        "status": "queued",
+        "credits_used": cost,
+        "shots_resumed": len(completed_idxs),
+        "shots_to_render": len(remaining_idxs),
+    }
 
 
 @router.websocket("/{job_id}/ws")

@@ -338,6 +338,22 @@ export async function getJob(jobId: string) {
   return data;
 }
 
+export interface RetryResult {
+  job_id: string;
+  workflow: string;
+  status: string;
+  credits_used: number;
+  shots_resumed: number;
+  shots_to_render: number;
+}
+
+export async function retryJob(jobId: string) {
+  const { data } = await api.post<RetryResult>(`/jobs/${jobId}/retry`, undefined, {
+    headers: { "Idempotency-Key": crypto.randomUUID() },
+  });
+  return data;
+}
+
 // ── Assets ──────────────────────────────────────────────────────────────────
 
 export interface AssetItem {
