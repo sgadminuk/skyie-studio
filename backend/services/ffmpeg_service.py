@@ -14,7 +14,16 @@ def _run_ffmpeg(args: list[str], desc: str = ""):
     logger.info(f"FFmpeg ({desc}): {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        raise RuntimeError(f"FFmpeg failed ({desc}): {result.stderr}")
+        # Empty stderr from a non-zero exit is almost always SIGKILL by the
+        # OOM killer — surface that explicitly so the failure is actionable.
+        stderr = (result.stderr or "").strip()
+        if not stderr:
+            stderr = (
+                f"(no stderr) — exit={result.returncode} "
+                f"(signal={-result.returncode if result.returncode < 0 else 'n/a'}); "
+                "likely OOM kill or container resource limit"
+            )
+        raise RuntimeError(f"FFmpeg failed ({desc}): {stderr}")
     return result
 
 
@@ -121,9 +130,13 @@ def stitch_clips(clips: list[str], output: str):
 
 
 def stitch_with_crossfade(clips: list[str], output: str, fade_sec: float = 0.5):
-    """Concatenate clips with a crossfade (xfade) + audio crossfade between each pair.
+    """Concatenate clips with a crossfade between each pair.
 
-    Requires re-encode. Probes each clip's duration to compute xfade offsets.
+    Done pairwise (one xfade per encode pass, intermediate file between each)
+    to bound memory: chaining N xfades in a single graph keeps every input's
+    decoded frames resident, which OOM-kills the worker on yuv444p 1080p
+    inputs. Output is forced to yuv420p for browser compat and to halve chroma
+    memory vs. Veo's native yuv444p output.
     """
     if not clips:
         raise ValueError("No clips to stitch")
@@ -132,49 +145,46 @@ def stitch_with_crossfade(clips: list[str], output: str, fade_sec: float = 0.5):
         shutil.copy2(clips[0], output)
         return output
 
-    probes = [_probe_stream(c) for c in clips]
-    durations: list[float] = []
-    for p in probes:
-        d = p.get("duration")
-        if d is None:
-            raise RuntimeError("crossfade requires probe-able duration on every clip")
-        durations.append(float(d))
-
-    inputs: list[str] = []
-    for c in clips:
-        inputs.extend(["-i", c])
-
-    # Build a chain of xfade/acrossfade filters. Offset for the Nth join is
-    # cumulative duration of clips 0..N-1 minus N*fade (each fade overlaps).
-    v_filters: list[str] = []
-    a_filters: list[str] = []
-    cur_v = "[0:v]"
-    cur_a = "[0:a]"
-    cum_offset = durations[0] - fade_sec
-    for i in range(1, len(clips)):
-        v_out = f"[v{i}]"
-        a_out = f"[a{i}]"
-        v_filters.append(
-            f"{cur_v}[{i}:v]xfade=transition=fade:duration={fade_sec}:offset={cum_offset:.3f}{v_out}"
-        )
-        a_filters.append(
-            f"{cur_a}[{i}:a]acrossfade=d={fade_sec}{a_out}"
-        )
-        cur_v = v_out
-        cur_a = a_out
-        cum_offset += durations[i] - fade_sec
-
-    filter_complex = ";".join(v_filters + a_filters)
-
-    _run_ffmpeg(
-        inputs + [
-            "-filter_complex", filter_complex,
-            "-map", cur_v, "-map", cur_a,
-            "-c:v", "libx264", "-preset", "fast", "-c:a", "aac",
-            output,
-        ],
-        "stitch (crossfade)",
-    )
+    out_path = Path(output)
+    cur_path = clips[0]
+    intermediates: list[Path] = []
+    try:
+        for i in range(1, len(clips)):
+            prev_dur = _probe_stream(cur_path).get("duration")
+            if prev_dur is None:
+                raise RuntimeError(
+                    f"crossfade pair {i}: cannot probe duration of {cur_path}"
+                )
+            offset = float(prev_dur) - fade_sec
+            is_last = i == len(clips) - 1
+            next_path = (
+                out_path
+                if is_last
+                else out_path.with_name(f"{out_path.stem}.xfp{i}{out_path.suffix}")
+            )
+            _run_ffmpeg(
+                [
+                    "-i", cur_path,
+                    "-i", clips[i],
+                    "-filter_complex",
+                    (
+                        f"[0:v][1:v]xfade=transition=fade:duration={fade_sec}"
+                        f":offset={offset:.3f},format=yuv420p[v];"
+                        f"[0:a][1:a]acrossfade=d={fade_sec}[a]"
+                    ),
+                    "-map", "[v]", "-map", "[a]",
+                    "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac",
+                    str(next_path),
+                ],
+                f"stitch (crossfade pair {i})",
+            )
+            if not is_last:
+                intermediates.append(next_path)
+            cur_path = str(next_path)
+    finally:
+        for p in intermediates:
+            p.unlink(missing_ok=True)
     return output
 
 
