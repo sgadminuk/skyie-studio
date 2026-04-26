@@ -211,13 +211,31 @@ export default function AvatarPackPage() {
             default broad set (LinkedIn, party, beach, gym, traditional, etc).
           </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <Textarea
-            placeholder="e.g. lean more towards corporate / tech founder vibes, skip nightclub scenes"
+            placeholder="e.g. corporate / tech founder vibes, skip nightclub scenes"
             value={brief}
             onChange={(e) => setBrief(e.target.value)}
             rows={3}
           />
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="text-muted-foreground self-center">Quick presets:</span>
+            {[
+              { label: "Modeling portfolio", brief: "Generate a model portfolio: include athletic swimwear at a beach/pool, fashion editorial shots, fitness/activewear in a gym, evening editorial — alongside a few lifestyle shots. Editorial magazine aesthetic, professional poses." },
+              { label: "Tech founder", brief: "Lean towards tech founder / startup CEO vibes — LinkedIn headshots, conference stages, modern offices, smart casual, podium shots. Skip nightclub and traditional cultural scenes." },
+              { label: "Wedding / family", brief: "Lean towards wedding and family portraits — formal attire, traditional cultural settings, candid family moments, joyful group shots. Warm tones." },
+              { label: "Fitness / athlete", brief: "Lean towards fitness and athletic shots — gym, outdoor running, yoga, sports apparel, activewear. Add a couple of editorial fashion shots." },
+            ].map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => setBrief(preset.brief)}
+                className="px-2.5 py-1 rounded border border-border hover:border-primary/40 hover:bg-primary/5 transition-colors"
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

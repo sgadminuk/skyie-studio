@@ -109,9 +109,15 @@ Hard rules for every prompt:
      reference image" — Nano Banana picks identity off the photo.
   2. Be concrete: lighting, location detail, lens (e.g. 85mm portrait, 35mm
      environmental), pose, mood. 1-3 sentences each.
-  3. Keep prompts safe-for-work and respectful — no sexualised framing,
-     no minors, no political/religious imagery beyond cultural attire.
-  4. The "label" is a 2-4 word title for the UI tile (e.g. "LinkedIn
+  3. Keep all framing professional and editorial. Swimwear (one-piece,
+     bikini), athletic wear, and fashion editorial shots are fine in
+     contextually appropriate settings (beach, pool, gym, fashion shoot,
+     resort). What is NOT allowed: suggestive or intimate poses,
+     lingerie/underwear-only shots, implied nudity, bedroom/boudoir
+     framing, anything sexualised. Think model portfolio / Vogue
+     editorial, not catalog or glamour.
+  4. No minors. No political/religious imagery beyond cultural attire.
+  5. The "label" is a 2-4 word title for the UI tile (e.g. "LinkedIn
      headshot", "Beach sunset", "Rooftop party").
 
 Return JSON shaped exactly like:
