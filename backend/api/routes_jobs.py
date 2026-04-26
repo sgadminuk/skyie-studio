@@ -3,6 +3,7 @@
 import json
 import asyncio
 import logging
+import mimetypes
 from pathlib import Path
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import FileResponse
@@ -38,11 +39,14 @@ async def get_job_status(job_id: str):
 
 @router.get("/{job_id}/download")
 async def download_job_output(job_id: str):
-    """Force-download the job output with Content-Disposition: attachment.
+    """Serve the job output with Content-Disposition: attachment.
 
-    The static `/assets/...` route serves files inline; browsers ignore the
-    `download` attribute on cross-origin links (skyie.studio → api.skyie.studio),
-    so we need a dedicated endpoint that sets the attachment header.
+    Used for both the inline <video> player and the Download button. The
+    shared Traefik proxy applies global gzip/compression on the static
+    /assets/... route, which strips Range support and breaks mp4 streaming
+    in Safari. This route returns the correct media_type plus an attachment
+    disposition — Safari plays it inline because <video> ignores
+    Content-Disposition, and the Download button saves it cross-origin.
     """
     job = get_job(job_id)
     if not job:
@@ -54,7 +58,8 @@ async def download_job_output(job_id: str):
     if not p.exists():
         raise HTTPException(status_code=410, detail="Output file no longer on disk")
     filename = f"{job.get('workflow', 'output')}-{job_id[:8]}{p.suffix}"
-    return FileResponse(p, media_type="application/octet-stream", filename=filename)
+    media_type, _ = mimetypes.guess_type(p.name)
+    return FileResponse(p, media_type=media_type or "application/octet-stream", filename=filename)
 
 
 @router.websocket("/{job_id}/ws")

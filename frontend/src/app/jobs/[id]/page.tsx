@@ -229,7 +229,7 @@ export default function JobDetailPage() {
               className={`bg-black flex items-center justify-center mx-auto max-h-[80vh] ${aspectClass}`}
             >
               <video
-                src={downloadUrl}
+                src={attachmentUrl ?? downloadUrl}
                 controls
                 className="w-full h-full"
                 poster=""
