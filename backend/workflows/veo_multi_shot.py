@@ -263,6 +263,23 @@ async def execute_veo_multi_shot(job_id: str, params: dict) -> str:
     async def render(i: int, shot: dict):
         nonlocal completed
         async with sem:
+            # Skip shots that already produced a clip on disk (e.g. resumed run).
+            existing = out_dir / f"shot_{i + 1:02d}.mp4"
+            if existing.exists() and existing.stat().st_size > 0:
+                shots_status[i].update(
+                    status="completed",
+                    progress=100,
+                    clip_path=str(existing),
+                    cost_usd=0.0,
+                    resumed=True,
+                )
+                _publish_shot_status(job_id, params, shots_status)
+                async with completed_lock:
+                    completed += 1
+                    pct = 5 + int(80 * completed / len(shots))
+                    update_job(job_id, progress=pct, step=f"Rendered {completed}/{len(shots)} shots")
+                return
+
             shots_status[i].update(status="processing", progress=10)
             _publish_shot_status(job_id, params, shots_status)
             try:
@@ -274,12 +291,12 @@ async def execute_veo_multi_shot(job_id: str, params: dict) -> str:
                     user_id=user_id,
                     out_dir=out_dir,
                 )
-            except GeminiSafetyError as e:
-                shots_status[i].update(status="failed", error=str(e), code=e.code)
-                _publish_shot_status(job_id, params, shots_status)
-                raise
-            except GeminiError as e:
-                shots_status[i].update(status="failed", error=str(e), code=e.code)
+            except (GeminiSafetyError, GeminiError) as e:
+                # Per-shot failure: record it and let other shots finish so we
+                # don't waste their successful renders.
+                shots_status[i].update(
+                    status="failed", error=str(e), code=e.code, progress=100,
+                )
                 _publish_shot_status(job_id, params, shots_status)
                 raise
 
@@ -295,8 +312,31 @@ async def execute_veo_multi_shot(job_id: str, params: dict) -> str:
                 update_job(job_id, progress=pct, step=f"Rendered {completed}/{len(shots)} shots")
             _publish_shot_status(job_id, params, shots_status)
 
-    # Fail-fast: gather() raises on first exception, in-flight tasks finish (semaphore ≤ 3).
-    await asyncio.gather(*[render(i, s) for i, s in enumerate(shots)])
+    # Let every shot finish or fail independently — burning successful renders
+    # because a sibling raised mid-batch is not OK at $3+/shot.
+    results = await asyncio.gather(
+        *[render(i, s) for i, s in enumerate(shots)],
+        return_exceptions=True,
+    )
+    failed_idxs = [i for i, r in enumerate(results) if isinstance(r, BaseException)]
+    if failed_idxs:
+        summary = "; ".join(
+            f"shot {i + 1}: {shots_status[i].get('error') or type(results[i]).__name__}"
+            for i in failed_idxs
+        )
+        # Persist a manifest of what *did* render so the user can re-run and
+        # only the failed shots will actually hit Veo (the rest are reused).
+        total_cost_usd = sum(s.get("cost_usd") or 0.0 for s in shots_status)
+        _write_manifest(
+            out_dir, shots, shots_status,
+            aspect_ratio=aspect, resolution=resolution,
+            stitch_cfg=stitch_cfg, total_cost_usd=total_cost_usd,
+        )
+        raise RuntimeError(
+            f"{len(failed_idxs)}/{len(shots)} shots failed: {summary}. "
+            "Successful clips are preserved on disk — re-running this job will "
+            "skip them and only re-render the failed shots."
+        )
 
     # Stitch
     update_job(job_id, progress=88, step="Stitching shots")

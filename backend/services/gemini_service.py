@@ -468,11 +468,52 @@ class GeminiService:
                 pct = min(85, 10 + int(75 * min(elapsed / 240.0, 1.0)))
                 await progress_cb(pct, f"Rendering video ({int(elapsed)}s)")
 
+        # Veo operations sometimes finish with done=True but stuff the real
+        # failure in operation.error. Surface it as the typed error class so the
+        # caller can tell safety/quota/region apart from a true transient blip.
+        op_error = getattr(operation, "error", None)
+        if op_error is not None:
+            err_code = getattr(op_error, "code", None)
+            err_msg = getattr(op_error, "message", None) or str(op_error)
+            details = {"google_code": err_code, "google_message": err_msg}
+            lowered = (err_msg or "").lower()
+            if "safety" in lowered or "blocked" in lowered or "policy" in lowered:
+                raise GeminiSafetyError(
+                    f"Veo blocked the generation: {err_msg}", details=details,
+                )
+            if "quota" in lowered:
+                raise GeminiQuotaError(
+                    f"Veo quota exhausted: {err_msg}", retryable=False, details=details,
+                )
+            if "invalid" in lowered or err_code in (3, 9):
+                raise GeminiInvalidInputError(
+                    f"Veo rejected the request: {err_msg}", retryable=False, details=details,
+                )
+            raise GeminiTransientError(
+                f"Veo operation failed: {err_msg}", retryable=True, details=details,
+            )
+
         response = getattr(operation, "response", None)
         if not response or not getattr(response, "generated_videos", None):
             # Surface safety reason if present
             self._check_safety_block(response)
-            raise GeminiTransientError("Veo returned no video", retryable=True)
+            # Pull whatever the SDK exposes so the user gets a real signal.
+            details = {
+                "response_repr": repr(response)[:300] if response is not None else None,
+                "rai_filtered_count": getattr(response, "rai_media_filtered_count", None),
+                "rai_reasons": list(
+                    getattr(response, "rai_media_filtered_reasons", []) or []
+                ),
+            }
+            if details.get("rai_filtered_count"):
+                raise GeminiSafetyError(
+                    f"Veo filtered the output (RAI): {details['rai_reasons']}",
+                    details=details,
+                )
+            raise GeminiTransientError(
+                "Veo returned no video (operation done, response empty)",
+                retryable=True, details=details,
+            )
 
         generated = response.generated_videos[0]
         video_ref = getattr(generated, "video", None) or generated
