@@ -148,15 +148,26 @@ def find_job_by_idempotency_key(user_id: str, key: str) -> dict | None:
 
 def get_job(job_id: str) -> dict | None:
     """Get job data — Redis cache first, PostgreSQL fallback."""
+    from db.models import Job
+
     # Try Redis cache
     data = redis_client.hgetall(f"{JOB_PREFIX}{job_id}")
     if data:
         data["progress"] = int(data.get("progress", 0))
-        if data.get("params"):
+        params_raw = data.get("params")
+        if params_raw:
             try:
-                data["params"] = json.loads(data["params"])
+                data["params"] = json.loads(params_raw)
             except (json.JSONDecodeError, TypeError):
-                pass
+                # Legacy cache wrote Python repr() instead of JSON. Recover
+                # by re-reading the canonical params from PostgreSQL.
+                logger.warning(
+                    "Redis params for job %s unparseable as JSON — falling back to PG",
+                    job_id,
+                )
+                with Session(_sync_engine) as session:
+                    job = session.get(Job, uuid.UUID(job_id))
+                    data["params"] = (job.params if job else None) or {}
         # Coerce numeric fields back from string — Redis HSET stores everything as strings.
         raw_cost = data.get("cost_usd", "")
         if raw_cost == "" or raw_cost is None:
@@ -169,8 +180,6 @@ def get_job(job_id: str) -> dict | None:
         return data
 
     # Fallback to PostgreSQL
-    from db.models import Job
-
     with Session(_sync_engine) as session:
         job = session.get(Job, uuid.UUID(job_id))
         if not job:
@@ -207,6 +216,11 @@ def update_job(job_id: str, **fields):
             redis_fields[k] = v.value
         elif v is None:
             redis_fields[k] = ""
+        elif isinstance(v, (dict, list)):
+            # Redis HSET stores strings — dump complex values as JSON so
+            # get_job() can json.loads() them back. str() would yield
+            # Python repr which json.loads can't parse.
+            redis_fields[k] = json.dumps(v, default=str)
         else:
             redis_fields[k] = str(v)
     if redis_fields:
