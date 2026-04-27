@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { sans, mono } from "./fonts";
 import { Providers } from "@/components/system/Providers";
+import { Header } from "@/components/system/Header";
+import { Footer } from "@/components/system/Footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -42,7 +44,11 @@ export default function RootLayout({
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[10000] focus:bg-paper focus:text-ink focus:px-3 focus:py-2 focus:outline-2 focus:outline-signal">
           Skip to content
         </a>
-        <Providers>{children}</Providers>
+        <Providers>
+          <Header />
+          <div className="flex-1 flex flex-col">{children}</div>
+          <Footer />
+        </Providers>
       </body>
     </html>
   );
