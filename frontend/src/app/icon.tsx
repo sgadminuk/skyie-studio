@@ -1,19 +1,18 @@
 import { ImageResponse } from "next/og";
-import { defaultDriftConfig, dotPosition } from "@/lib/skyie/drift";
+import { defaultDriftConfig, dotPosition } from "@/lib/drift";
 
 /**
  * /icon · favicon. 32×32 PNG generated from the Drift mark at build /
  * edge time. Static positions (no animation — favicons are still images).
  *
- * Next 14 supports app/icon.tsx via next/og's ImageResponse since 13.3.
- * Same composition as the marketing site — paper-on-ink so a tiny tab
- * favicon still reads at glance.
+ * Per brief §3.1 — the mark is the favicon.
  */
 
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
 export default function Icon() {
+  // Render a 9×6 dot grid with the static S-curve baked in.
   const cfg = defaultDriftConfig;
   const dots: Array<{ cx: number; cy: number }> = [];
   for (let row = 0; row < cfg.rows; row++) {
@@ -21,6 +20,7 @@ export default function Icon() {
       dots.push(dotPosition(col, row, cfg));
     }
   }
+  // viewBox of the procedural mark
   const vbW = cfg.spacing * cfg.columns;
   const vbH = cfg.rowSpacing * cfg.rows + 2 * cfg.amplitude;
 
