@@ -231,7 +231,23 @@ isolation lets it fail loudly without confounding factors.
 
 ---
 
-## Phase 4 — merge marketing into frontend
+## Phase 4 — merge marketing into frontend ✅ DONE (2026-04-27)
+
+Five commits on `feat/unified-app`, merged to main as `30ee10b`:
+
+1. `e97114c` — dashboard routes moved under `/dashboard/*`
+2. `12d90d0` — marketing files moved into `frontend/` (sources, components, content)
+3. `789f004` — import paths repointed to new aliases; `lenis` added
+4. `0080605` — `src/middleware.ts` + `src/app/(marketing)/layout.tsx`
+5. `6fc3707` — `marketing/` directory deleted
+
+Final shape differs slightly from the plan below:
+- Route group is `(marketing)` (not `(public)`); dashboard lives at the literal path `/dashboard/*` (not `(authenticated)`), so middleware can do a clean prefix rewrite for `app.skyie.studio`.
+- Skipped the bidirectional cross-host redirects — middleware only rewrites `app.skyie.studio/foo → /dashboard/foo`. Auth gate stays in `dashboard/layout.tsx`.
+
+`next build`: 35 routes + middleware compile clean.
+
+### Original plan (kept for reference)
 
 Once `frontend/` is on Next 16 / React 19 / Tailwind 4, both projects
 share the same stack and the merge is mechanical.
@@ -327,20 +343,16 @@ on app.skyie.studio resolves to `(authenticated)/page.tsx`.
 
 ---
 
-## Phase 5 — drop marketing/, finalise
+## Phase 5 — finalise compose ✅ DONE (2026-04-27)
 
-```bash
-rm -rf marketing/
-```
+`marketing/` deletion happened inside Phase 4 commit 5. Compose was
+updated in the same pass:
 
-Then docker-compose: the frontend label adds a second host:
+- Frontend Traefik router rule now claims `skyie.studio || www.skyie.studio || app.skyie.studio`
+- `www → apex` permanent redirect declared as a Traefik regex middleware
+- Dockerfile header refreshed (Next 16, unified app, host-based routing in middleware)
 
-```yaml
-- "traefik.http.routers.skyie-frontend.rule=Host(`skyie.studio`) || Host(`app.skyie.studio`)"
-```
-
-Update `docker-compose.yml` env vars: frontend now needs both
-`NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_APP_URL`.
+`docker compose config` validates clean.
 
 ---
 

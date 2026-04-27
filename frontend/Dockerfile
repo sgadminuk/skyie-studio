@@ -1,6 +1,8 @@
 # =============================================================================
-# Skyie Studio — Frontend (Next.js 14)
-# Multi-stage build for production-optimized image
+# Skyie Studio — Frontend (Next.js 16, unified marketing + dashboard)
+# Multi-stage build → standalone output. Serves skyie.studio,
+# www.skyie.studio (redirects), and app.skyie.studio from one process;
+# host-based routing handled in src/middleware.ts.
 # =============================================================================
 
 # Stage 1: Install dependencies
