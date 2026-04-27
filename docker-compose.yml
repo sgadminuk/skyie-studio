@@ -197,7 +197,11 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=SkyieProxy"
       # HTTPS Router
-      - "traefik.http.routers.skyie-studio.rule=Host(`skyie.studio`)"
+      # NOTE: dashboard moved to app.skyie.studio. The apex skyie.studio
+      # is now claimed by the marketing site (deployed off-VPS — see
+      # DEPLOYMENT.md). Traefik will auto-issue a Let's Encrypt cert for
+      # the new host on first request.
+      - "traefik.http.routers.skyie-studio.rule=Host(`app.skyie.studio`)"
       - "traefik.http.routers.skyie-studio.entrypoints=websecure"
       - "traefik.http.routers.skyie-studio.tls=true"
       - "traefik.http.routers.skyie-studio.tls.certresolver=letsencrypt"

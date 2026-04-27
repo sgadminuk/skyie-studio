@@ -7,8 +7,12 @@ import { AuthenticatedLayout } from "./authenticated-layout";
 import { MotionPolicyProvider } from "@/components/skyie/MotionPolicyProvider";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://app.skyie.studio"),
   title: "Skyie Studio",
   description: "AI Video Generation Platform — synthesize motion from a prompt.",
+  // The dashboard is auth-walled; nothing to index. robots.ts disallows
+  // all crawlers as a defence-in-depth.
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({

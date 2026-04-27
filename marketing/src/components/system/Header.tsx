@@ -4,9 +4,17 @@ import { DriftMark } from "@/components/brand/DriftMark";
 /**
  * Site header. 24px animated mark left, route nav right. Thin row.
  *
+ * The "Sign in" link points to the dashboard host (app.skyie.studio) —
+ * this surface is the marketing apex; the authenticated app lives on
+ * the subdomain. See DEPLOYMENT.md for the topology.
+ *
  * The mark is paused under prefers-reduced-motion via the global CSS
  * rule in DriftMark.module.css — no JS needed.
  */
+
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL || "https://app.skyie.studio";
+
 export function Header() {
   return (
     <header
@@ -31,6 +39,13 @@ export function Header() {
           <NavLink href="/work">Work</NavLink>
           <NavLink href="/access">Access</NavLink>
           <NavLink href="/manifesto">Manifesto</NavLink>
+          <a
+            href={`${APP_URL}/login`}
+            className="text-mono-sm uppercase tracking-[0.16em] text-ink border border-ink px-3 py-1.5 hover:bg-ink hover:text-paper transition-colors"
+            data-cursor="ring"
+          >
+            Sign in
+          </a>
         </nav>
       </div>
     </header>

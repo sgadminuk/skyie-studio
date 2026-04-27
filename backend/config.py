@@ -10,6 +10,18 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     MOCK_MODE: bool = True
 
+    # CORS — comma-separated origins. The default development list covers
+    # local Next.js dev servers (3000–3002) for both marketing/ and frontend/.
+    # Production sets this in .env.production to the real domains:
+    #   CORS_ORIGINS=https://skyie.studio,https://app.skyie.studio
+    CORS_ORIGINS: str = (
+        "http://localhost:3000,"
+        "http://localhost:3001,"
+        "http://localhost:3002,"
+        "https://skyie.studio,"
+        "https://app.skyie.studio"
+    )
+
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://skyie_studio:skyie_studio@localhost:5432/skyie_studio"
     DATABASE_URL_SYNC: str = "postgresql://skyie_studio:skyie_studio@localhost:5432/skyie_studio"
