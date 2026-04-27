@@ -17,7 +17,7 @@
 | **0** | Adapt compose to new shared proxy | ✅ done | `feat/ui-refresh` | 15 min | this commit |
 | **1** | Tailwind 3 → 4 (frontend) | ✅ done | `chore/tw4` | ~1 day | [§1](#phase-1) |
 | **2** | Next 14 → 15 + React 18 → 19 | ✅ done | `chore/next-15-react-19` | ~half day | [§2](#phase-2) |
-| **3** | Next 15 → 16 | ⬜ not started | `chore/next-16` | ~1 day | [§3](#phase-3) |
+| **3** | Next 15 → 16 + ESLint 9 flat config | ✅ done | `chore/next-16` | ~half day | [§3](#phase-3) |
 | **4** | Merge marketing into frontend (route groups + hostname middleware) | ⬜ not started | `feat/unified-app` | ~1-2 days | [§4](#phase-4) |
 | **5** | Drop marketing/, finalise compose, verify | ⬜ not started | (in #4) | 30 min | [§5](#phase-5) |
 | **6** | Browser smoke + production deploy | ⬜ not started | — | half day | [§6](#phase-6) |
@@ -155,7 +155,57 @@ arrive cleanly before the strict enforcement lands.
 
 ---
 
-## Phase 3 — Next 15 → 16
+## Phase 3 — Next 15 → 16 + ESLint 9 flat config  ✅ done
+
+**Outcome (2026-04-27):** half a day. Phase D (ESLint 9 flat config)
+got folded in here because `eslint-config-next@16` requires ESLint 9
+as a peer dependency.
+
+What landed
+- `next: 15.5.15 → 16.2.4`
+- `eslint: 8.57.1 → 9.39.4`
+- `eslint-config-next: 15.5.15 → 16.2.4`
+- `@eslint/eslintrc: ^3.3.5` (FlatCompat bridge for the still-CJS
+  next/core-web-vitals + next/typescript shareable configs)
+
+Config changes
+- `.eslintrc.json` deleted; replaced with `eslint.config.mjs` flat
+  config that uses `FlatCompat.extends("next/core-web-vitals",
+  "next/typescript")`.
+- `package.json` scripts:
+    `dev: next dev`           ← Turbopack default in Next 16
+    `build: next build`       ← Turbopack default in Next 16
+    `lint: eslint`            ← `next lint` removed in 16
+    `typecheck: tsc --noEmit` ← added for parity with marketing/
+- `next.config.mjs` got a `turbopack.root: path.resolve(__dirname)`
+  pin to silence the workspace-root warning (the stray
+  `~/pnpm-lock.yaml` confused Next 16's auto-detection).
+
+What didn't change
+- `next.config.mjs` had no `experimental.turbopack`, no `eslint`, no
+  `images.domains` — nothing to migrate per the codemod.
+- No async-API code regressions: we'd already verified in Phase 2 that
+  the codebase only reads `useParams()` / `useSearchParams()` as
+  client hooks, so Next 16's strict async-only enforcement doesn't
+  bite.
+- Radix primitives still install cleanly.
+
+Validation
+- `npx tsc --noEmit` clean
+- `npm run build` clean — all 26 routes prerender (22 pages + /icon
+  /apple-icon /robots.txt + /_not-found)
+- Browser smoke at `/login` (1280×800) under Next 16 dev server: zero
+  console errors, custom utilities render, Drift mark animates,
+  signal focus ring works
+- Build banner now reads `▲ Next.js 16.2.4 (Turbopack)`
+
+Footprint
+- Shared chunk: 102 KB → ~115 KB (Next 16 runtime delta is small).
+  Still well under the 180 KB initial-JS budget.
+
+---
+
+## Phase 3 — original notes (preserved for reference)
 
 **Why a separate phase:** smaller change set than 14→15. Doing it in
 isolation lets it fail loudly without confounding factors.
