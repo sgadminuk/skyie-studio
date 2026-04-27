@@ -1,0 +1,75 @@
+/* -----------------------------------------------------------------------
+ * <DriftMark /> — procedural Skyie Studio mark
+ * Per brief §3.1, §5.1.
+ *
+ * The animation translates each column group along Y by a sine waveform
+ * with amplitude `--drift-amplitude` over `--drift-duration`, using the
+ * `drift` cubic-bezier (per §6.1).
+ *
+ * Per-column phase offset is supplied via `--drift-delay` on the column
+ * group. Eight phase positions (0..7 of period 8) cover the full wave.
+ *
+ * The keyframe percentages match `skyie-mark-animated.svg` exactly so
+ * the procedural and reference marks are visually indistinguishable.
+ * -------------------------------------------------------------------- */
+
+.root {
+  display: inline-block;
+  vertical-align: middle;
+  color: var(--ink);
+}
+
+.col {
+  /* baseline — non-animated columns sit here */
+  transform: translateY(0);
+}
+
+.colAnimated {
+  animation: drift var(--drift-duration, 4s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  animation-delay: var(--drift-delay, 0s);
+  transform-origin: center;
+  /* will-change is reset by Motion below; we trade memory for paint */
+  will-change: transform;
+}
+
+.pauseOnHover:hover .colAnimated {
+  animation-play-state: paused;
+}
+
+@keyframes drift {
+  0% {
+    transform: translateY(0);
+  }
+  12.5% {
+    transform: translateY(calc(var(--drift-amplitude) * -0.7071));
+  }
+  25% {
+    transform: translateY(calc(var(--drift-amplitude) * -1));
+  }
+  37.5% {
+    transform: translateY(calc(var(--drift-amplitude) * -0.7071));
+  }
+  50% {
+    transform: translateY(0);
+  }
+  62.5% {
+    transform: translateY(calc(var(--drift-amplitude) * 0.7071));
+  }
+  75% {
+    transform: translateY(calc(var(--drift-amplitude) * 1));
+  }
+  87.5% {
+    transform: translateY(calc(var(--drift-amplitude) * 0.7071));
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .colAnimated {
+    animation: none;
+    /* freeze at a tasteful frame — the static S-curve, achieved by
+       applying the t=0 offset via the data attribute mirror */
+  }
+}
