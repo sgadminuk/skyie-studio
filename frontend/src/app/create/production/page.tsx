@@ -76,8 +76,8 @@ export default function ProductionPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Full Production</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-h2 text-ink">Full Production</h1>
+        <p className="text-ink/60 mt-1">
           Write a script with markers and get a complete video
         </p>
       </div>
@@ -123,8 +123,8 @@ export default function ProductionPage() {
                         key={i}
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${
                           s.type === "talking"
-                            ? "bg-blue-500/10 text-blue-500"
-                            : "bg-green-500/10 text-green-500"
+                            ? "bg-signal/10 text-signal"
+                            : "bg-ink/10 text-ink"
                         }`}
                       >
                         {s.type === "talking" ? "Talking" : "B-Roll"} #{i + 1}

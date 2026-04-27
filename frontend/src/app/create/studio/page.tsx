@@ -311,13 +311,13 @@ export default function StudioPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold tracking-tight">Studio</h1>
+            <h1 className="text-h2 text-ink">Studio</h1>
             <Badge variant="default" className="text-[10px]">
               <Sparkles className="h-3 w-3 mr-1" />
               Gemini
             </Badge>
           </div>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-ink/60 mt-1">
             Generate images and videos with Veo 3.1 and Nano Banana. Premium quality, no compromises.
           </p>
         </div>
@@ -533,7 +533,7 @@ export default function StudioPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Image Input</CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-ink/60 mt-1">
                 Choose how Veo should use a photo. Start frame animates from the
                 exact image. Character references keep the same person across a
                 fully new scene described by your prompt.
@@ -688,7 +688,7 @@ export default function StudioPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-base">Reference Images</CardTitle>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-ink/60 mt-1">
                   Blend up to 10 images. Nano Banana will compose them into a single output.
                 </p>
               </div>
@@ -744,7 +744,7 @@ export default function StudioPage() {
                 )}
               </div>
               {composeImages.length === 1 && (
-                <p className="text-xs text-amber-500 mt-2">
+                <p className="text-mono-sm text-signal mt-2">
                   Add at least one more image — composition needs 2+ references.
                 </p>
               )}

@@ -10,17 +10,24 @@ import {
   XCircle,
   Clock,
   Share2,
+  RotateCcw,
+  FileArchive,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { getJob, exportVideo, retryJob, downloadAsBlob, type Job, type ShotOverride } from "@/lib/api";
-import { RotateCcw, FileArchive } from "lucide-react";
+import {
+  getJob,
+  exportVideo,
+  retryJob,
+  downloadAsBlob,
+  type Job,
+  type ShotOverride,
+} from "@/lib/api";
 import { Textarea } from "@/components/ui/textarea";
 import { useJobProgress, formatElapsed } from "@/hooks/use-job-progress";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -69,11 +76,11 @@ const ERROR_CODE_MESSAGES: Record<string, { title: string; hint: string }> = {
 };
 
 const STATUS_CONFIG = {
-  queued: { icon: Clock, color: "text-muted-foreground", label: "Queued" },
-  processing: { icon: Loader2, color: "text-blue-500", label: "Processing" },
-  completed: { icon: CheckCircle2, color: "text-green-500", label: "Completed" },
-  failed: { icon: XCircle, color: "text-red-500", label: "Failed" },
-  cancelled: { icon: XCircle, color: "text-muted-foreground", label: "Cancelled" },
+  queued:     { icon: Clock,        label: "Queued",     tint: "text-ink/55"      },
+  processing: { icon: Loader2,      label: "Processing", tint: "text-signal"      },
+  completed:  { icon: CheckCircle2, label: "Completed",  tint: "text-ink"         },
+  failed:     { icon: XCircle,      label: "Failed",     tint: "text-destructive" },
+  cancelled:  { icon: XCircle,      label: "Cancelled",  tint: "text-ink/40"      },
 };
 
 export default function JobDetailPage() {
@@ -84,11 +91,9 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [retrying, setRetrying] = useState(false);
-  // Editable per-shot prompt overrides for the retry flow (key = shot idx).
   const [retryEdits, setRetryEdits] = useState<Record<number, string>>({});
 
-  const isActive =
-    job?.status === "queued" || job?.status === "processing";
+  const isActive = job?.status === "queued" || job?.status === "processing";
   const progress = useJobProgress(isActive ? jobId : null);
 
   useEffect(() => {
@@ -98,7 +103,6 @@ export default function JobDetailPage() {
       .finally(() => setLoading(false));
   }, [jobId]);
 
-  // Update job from WebSocket progress
   useEffect(() => {
     if (progress && progress.status) {
       setJob((prev) =>
@@ -112,7 +116,7 @@ export default function JobDetailPage() {
               output_path: progress.output_path || prev.output_path,
               download_url: progress.download_url || prev.download_url,
             }
-          : prev
+          : prev,
       );
     }
   }, [progress]);
@@ -133,14 +137,12 @@ export default function JobDetailPage() {
     if (retrying) return;
     setRetrying(true);
     try {
-      // Build the override payload from any prompts the user has edited.
-      const shots = ((job?.params as Record<string, unknown>)?.shots ??
-        []) as Array<{ prompt?: string }>;
+      const shots = ((job?.params as Record<string, unknown>)?.shots ?? []) as Array<{
+        prompt?: string;
+      }>;
       const overrides: ShotOverride[] = Object.entries(retryEdits)
         .map(([k, v]) => ({ idx: Number(k), prompt: v.trim() }))
-        .filter(
-          (o) => o.prompt && o.prompt !== (shots[o.idx]?.prompt ?? "").trim(),
-        );
+        .filter((o) => o.prompt && o.prompt !== (shots[o.idx]?.prompt ?? "").trim());
 
       const result = await retryJob(jobId, overrides.length ? overrides : undefined);
       toast.success(
@@ -160,34 +162,27 @@ export default function JobDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin text-ink/55" />
       </div>
     );
   }
 
   if (!job) {
     return (
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
-        <p className="text-muted-foreground">Job not found.</p>
+        <p className="text-mono-sm text-ink/55">Job not found.</p>
       </div>
     );
   }
 
   const config = STATUS_CONFIG[job.status] || STATUS_CONFIG.queued;
   const StatusIcon = config.icon;
-  const downloadUrl = job.download_url
-    ? `${API_URL}${job.download_url}`
-    : null;
-  // attachment_url is served with Content-Disposition: attachment so the browser
-  // saves the file rather than playing it inline (required cross-origin where
-  // the <a download> attribute is ignored).
-  const attachmentUrl = job.attachment_url
-    ? `${API_URL}${job.attachment_url}`
-    : downloadUrl;
+  const downloadUrl = job.download_url ? `${API_URL}${job.download_url}` : null;
+  const attachmentUrl = job.attachment_url ? `${API_URL}${job.attachment_url}` : downloadUrl;
   const aspectClass = (() => {
     const ar = (job.params as Record<string, unknown>)?.aspect_ratio;
     if (ar === "9:16") return "aspect-[9/16] max-w-sm";
@@ -196,60 +191,61 @@ export default function JobDetailPage() {
   })();
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto w-full max-w-4xl flex flex-col gap-[clamp(24px,4vh,48px)]">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {WORKFLOW_LABELS[job.workflow] || job.workflow}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {new Date(job.created_at).toLocaleString()}
-          </p>
-        </div>
-        <Badge
-          variant={
-            job.status === "completed"
-              ? "default"
-              : job.status === "failed"
-              ? "destructive"
-              : "secondary"
-          }
+      <header className="flex flex-col gap-4">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="text-mono-sm text-ink/55 hover:text-ink flex items-center gap-2 transition-colors w-fit"
         >
-          <StatusIcon
-            className={`mr-1 h-3 w-3 ${
-              job.status === "processing" ? "animate-spin" : ""
-            }`}
-          />
-          {config.label}
-        </Badge>
-      </div>
+          <ArrowLeft className="h-3.5 w-3.5" />
+          BACK
+        </button>
+        <div className="flex items-end justify-between gap-6 flex-wrap">
+          <div className="flex flex-col gap-2">
+            <span className="text-mono-sm text-ink/40">
+              JOB · {jobId.slice(0, 8).toUpperCase()}
+            </span>
+            <h1 className="text-h2 text-ink">
+              {WORKFLOW_LABELS[job.workflow] || job.workflow}.
+            </h1>
+            <p className="text-mono-sm text-ink/55">
+              {new Date(job.created_at).toLocaleString()}
+            </p>
+          </div>
+          <Badge
+            variant={
+              job.status === "completed"
+                ? "default"
+                : job.status === "failed"
+                  ? "destructive"
+                  : "secondary"
+            }
+          >
+            <StatusIcon
+              className={cn("h-3 w-3 mr-1", job.status === "processing" && "animate-spin")}
+            />
+            {config.label}
+          </Badge>
+        </div>
+      </header>
 
-      {/* Progress */}
+      {/* Progress (active states) */}
       {(job.status === "processing" || job.status === "queued") && (
-        <Card>
-          <CardContent className="py-6 space-y-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">{job.step}</span>
-              <span className="tabular-nums text-muted-foreground">
-                {job.progress}%
-              </span>
-            </div>
-            <Progress value={job.progress} className="h-2" />
-            {progress && (
-              <p className="text-xs text-muted-foreground">
-                Elapsed: {formatElapsed(progress.elapsed)}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <section className="border border-ink/15 px-6 py-5 flex flex-col gap-4">
+          <div className="flex items-baseline justify-between">
+            <span className="text-sm text-ink">{job.step}</span>
+            <span className="text-mono-sm tabular-nums text-ink/55">{job.progress}%</span>
+          </div>
+          <Progress value={job.progress} />
+          {progress && (
+            <p className="text-mono-sm text-ink/55">Elapsed · {formatElapsed(progress.elapsed)}</p>
+          )}
+        </section>
       )}
 
-      {/* Avatar pack gallery — renders during processing too so the user
-          can watch tiles fill in. */}
+      {/* Avatar pack gallery */}
       {job.workflow === "avatar_pack" && (() => {
         const scenes = ((job.params as Record<string, unknown>)?.scenes ?? []) as Array<{
           label?: string;
@@ -261,7 +257,9 @@ export default function JobDetailPage() {
           error?: string;
         }>;
         if (!scenes.length && !status.length) return null;
-        const tiles = scenes.length ? scenes : status.map(() => ({} as { label?: string; prompt?: string }));
+        const tiles = scenes.length
+          ? scenes
+          : status.map(() => ({} as { label?: string; prompt?: string }));
         const completedCount = status.filter((s) => s.status === "completed").length;
         const handleDownloadAll = () => {
           downloadAsBlob(
@@ -276,102 +274,98 @@ export default function JobDetailPage() {
           ).catch(() => toast.error("Download failed"));
         };
         return (
-          <Card>
-            <CardHeader className="flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-base">Avatars</CardTitle>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {completedCount}/{tiles.length} rendered
-                  {job.status === "processing" ? " — streaming live" : ""}
-                </p>
+          <section className="flex flex-col gap-4">
+            <header className="flex items-baseline justify-between gap-3 flex-wrap">
+              <div className="flex items-baseline gap-3">
+                <span className="text-mono-sm text-ink/40">§01</span>
+                <h2 className="text-h3 text-ink">Avatars.</h2>
+                <span className="text-mono-sm text-ink/55">
+                  {String(completedCount).padStart(2, "0")} / {String(tiles.length).padStart(2, "0")}
+                  {job.status === "processing" && " · streaming"}
+                </span>
               </div>
               {completedCount > 0 && (
                 <Button size="sm" variant="outline" onClick={handleDownloadAll}>
-                  <FileArchive className="mr-2 h-4 w-4" />
-                  Download all ({completedCount}) as ZIP
+                  <FileArchive className="h-4 w-4" />
+                  Download all
                 </Button>
               )}
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {tiles.map((scene, i) => {
-                  const s = status[i] || {};
-                  const imgUrl = s.image_path
-                    ? `${API_URL}${s.image_path.replace(/^\/app/, "")}`
-                    : null;
-                  const ext = (s.image_path || "").endsWith(".jpg") ? "jpg" : "png";
-                  return (
-                    <div
-                      key={i}
-                      className="relative group aspect-square rounded-md overflow-hidden border bg-muted/30"
-                    >
-                      {imgUrl ? (
-                        <>
-                          <img
-                            src={imgUrl}
-                            alt={scene.label || `Avatar ${i + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadOne(i, ext)}
-                            aria-label={`Download avatar ${i + 1}`}
-                            title="Download"
-                            className="absolute top-1 right-1 bg-black/70 hover:bg-black/90 rounded-md p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Download className="h-3.5 w-3.5 text-white" />
-                          </button>
-                        </>
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                          {s.status === "failed" ? (
-                            <XCircle className="h-6 w-6 text-destructive" />
-                          ) : s.status === "processing" ? (
-                            <Loader2 className="h-6 w-6 animate-spin" />
-                          ) : (
-                            <Clock className="h-5 w-5 opacity-50" />
-                          )}
-                        </div>
-                      )}
-                      <div className="absolute bottom-0 inset-x-0 p-1.5 text-[10px] bg-gradient-to-t from-black/70 to-transparent text-white truncate pointer-events-none">
-                        {scene.label || `Avatar ${i + 1}`}
+            </header>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-[1px] bg-ink/15">
+              {tiles.map((scene, i) => {
+                const s = status[i] || {};
+                const imgUrl = s.image_path
+                  ? `${API_URL}${s.image_path.replace(/^\/app/, "")}`
+                  : null;
+                const ext = (s.image_path || "").endsWith(".jpg") ? "jpg" : "png";
+                return (
+                  <div
+                    key={i}
+                    className="relative group aspect-square overflow-hidden bg-ink/[0.06]"
+                  >
+                    {imgUrl ? (
+                      <>
+                        <img
+                          src={imgUrl}
+                          alt={scene.label || `Avatar ${i + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadOne(i, ext)}
+                          aria-label={`Download avatar ${i + 1}`}
+                          className="absolute top-2 right-2 bg-ink text-paper p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-ink/55">
+                        {s.status === "failed" ? (
+                          <XCircle className="h-6 w-6 text-destructive" />
+                        ) : s.status === "processing" ? (
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        ) : (
+                          <Clock className="h-5 w-5 opacity-50" />
+                        )}
                       </div>
+                    )}
+                    <div className="absolute bottom-0 inset-x-0 px-2 py-1 text-mono-sm bg-ink text-paper truncate pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                      {scene.label || `Avatar ${i + 1}`}
                     </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         );
       })()}
 
-      {/* Output Viewer */}
+      {/* Output viewer */}
       {job.status === "completed" && downloadUrl && job.workflow !== "avatar_pack" && (
-        <Card className="overflow-hidden">
-          {IMAGE_WORKFLOWS.has(job.workflow) ? (
-            <div className="bg-black flex items-center justify-center">
-              <img
-                src={downloadUrl}
-                alt="Generated output"
-                className="max-h-[70vh] w-auto"
-              />
-            </div>
-          ) : (
-            <div
-              className={`bg-black flex items-center justify-center mx-auto max-h-[80vh] ${aspectClass}`}
-            >
-              <video
-                src={attachmentUrl ?? downloadUrl}
-                controls
-                className="w-full h-full"
-                poster=""
-              >
-                <track kind="captions" />
-              </video>
-            </div>
-          )}
-          <CardContent className="py-4">
-            <div className="flex gap-2 flex-wrap items-center">
+        <section className="flex flex-col gap-4">
+          <header className="flex items-baseline gap-3">
+            <span className="text-mono-sm text-ink/40">§01</span>
+            <h2 className="text-h3 text-ink">Output.</h2>
+          </header>
+          <div className="border border-ink/15">
+            {IMAGE_WORKFLOWS.has(job.workflow) ? (
+              <div className="bg-ink flex items-center justify-center">
+                <img src={downloadUrl} alt="Generated output" className="max-h-[70vh] w-auto" />
+              </div>
+            ) : (
+              <div className={cn("bg-ink flex items-center justify-center mx-auto max-h-[80vh]", aspectClass)}>
+                <video
+                  src={attachmentUrl ?? downloadUrl}
+                  controls
+                  className="w-full h-full"
+                  poster=""
+                >
+                  <track kind="captions" />
+                </video>
+              </div>
+            )}
+            <div className="border-t border-ink/15 px-5 py-4 flex gap-2 flex-wrap items-center">
               <Button
                 onClick={() => {
                   if (!attachmentUrl && !downloadUrl) return;
@@ -381,92 +375,80 @@ export default function JobDetailPage() {
                   downloadAsBlob(url, filename).catch(() => toast.error("Download failed"));
                 }}
               >
-                <Download className="mr-2 h-4 w-4" />
+                <Download className="h-4 w-4" />
                 Download
               </Button>
               {!IMAGE_WORKFLOWS.has(job.workflow) && (
                 <Button
                   variant="outline"
                   disabled={exporting}
-                  onClick={() =>
-                    handleExport(["tiktok", "youtube", "instagram"])
-                  }
+                  onClick={() => handleExport(["tiktok", "youtube", "instagram"])}
                 >
-                  <Share2 className="mr-2 h-4 w-4" />
-                  {exporting ? "Exporting..." : "Export All Formats"}
+                  <Share2 className="h-4 w-4" />
+                  {exporting ? "Exporting…" : "Export all formats"}
                 </Button>
               )}
               {(() => {
                 const cost = job.cost_usd == null ? null : Number(job.cost_usd);
                 if (cost == null || Number.isNaN(cost)) return null;
                 return (
-                  <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                    Provider cost: ${cost.toFixed(4)}
+                  <span className="ml-auto text-mono-sm text-ink/55 tabular-nums">
+                    Provider cost · ${cost.toFixed(4)}
                   </span>
                 );
               })()}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       )}
 
       {/* Error */}
       {job.status === "failed" && job.error && (
-        <Card className="border-destructive/50">
-          <CardContent className="py-4 space-y-2">
+        <section className="flex flex-col gap-4">
+          <header className="flex items-baseline gap-3">
+            <span className="text-mono-sm text-destructive">ERR</span>
+            <h2 className="text-h3 text-destructive">Failure.</h2>
+          </header>
+          <div className="border border-destructive/40 bg-destructive/[0.04] px-6 py-5 flex flex-col gap-3">
             {job.error_code && ERROR_CODE_MESSAGES[job.error_code] ? (
               <>
-                <p className="text-sm font-medium text-destructive">
-                  {ERROR_CODE_MESSAGES[job.error_code].title}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {ERROR_CODE_MESSAGES[job.error_code].hint}
-                </p>
-                <p className="text-xs text-muted-foreground/70 mt-2 font-mono">
-                  {job.error}
-                </p>
+                <p className="text-sm text-destructive">{ERROR_CODE_MESSAGES[job.error_code].title}</p>
+                <p className="text-sm text-ink/70">{ERROR_CODE_MESSAGES[job.error_code].hint}</p>
+                <p className="text-mono-sm text-ink/45">{job.error}</p>
               </>
             ) : (
               <>
-                <p className="text-sm font-medium text-destructive">Error</p>
-                <p className="text-sm text-muted-foreground">{job.error}</p>
+                <p className="text-sm text-destructive">Error</p>
+                <p className="text-sm text-ink/70">{job.error}</p>
               </>
             )}
             {job.workflow === "veo_multi_shot" && (() => {
-              const shotsList = ((job.params as Record<string, unknown>)?.shots ??
-                []) as Array<{ prompt?: string }>;
-              const shotsStatus = ((job.params as Record<string, unknown>)
-                ?.shots_status ?? []) as Array<{
-                status?: string;
-                error?: string;
+              const shotsList = ((job.params as Record<string, unknown>)?.shots ?? []) as Array<{
+                prompt?: string;
               }>;
+              const shotsStatus = ((job.params as Record<string, unknown>)?.shots_status ??
+                []) as Array<{ status?: string; error?: string }>;
               const incompleteIdxs = shotsList
                 .map((_, i) => i)
                 .filter((i) => shotsStatus[i]?.status !== "completed");
               return (
-                <div className="pt-2 space-y-3">
+                <div className="pt-2 flex flex-col gap-3">
                   {incompleteIdxs.length > 0 && (
-                    <div className="space-y-3">
-                      <p className="text-xs font-medium text-foreground">
-                        Edit prompts before retrying (optional)
+                    <div className="flex flex-col gap-3">
+                      <p className="text-mono-sm text-ink/55">
+                        EDIT PROMPTS BEFORE RETRYING (optional)
                       </p>
                       {incompleteIdxs.map((idx) => {
                         const original = shotsList[idx]?.prompt ?? "";
                         const status = shotsStatus[idx];
                         return (
-                          <div key={idx} className="space-y-1">
+                          <div key={idx} className="flex flex-col gap-1">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-medium">
-                                Shot {idx + 1}
-                              </span>
-                              <Badge variant="outline" className="text-[10px]">
-                                {status?.status ?? "queued"}
-                              </Badge>
+                              <span className="text-mono-sm text-ink">SHOT {idx + 1}</span>
+                              <Badge variant="outline">{status?.status ?? "queued"}</Badge>
                             </div>
                             {status?.error && (
-                              <p className="text-[11px] text-destructive/80 font-mono">
-                                {status.error}
-                              </p>
+                              <p className="text-mono-sm text-destructive/80">{status.error}</p>
                             )}
                             <Textarea
                               value={retryEdits[idx] ?? original}
@@ -477,7 +459,6 @@ export default function JobDetailPage() {
                                 }))
                               }
                               rows={3}
-                              className="text-sm"
                               placeholder="Shot prompt"
                             />
                           </div>
@@ -485,87 +466,64 @@ export default function JobDetailPage() {
                       })}
                     </div>
                   )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={retrying}
-                    onClick={handleRetry}
-                  >
-                    <RotateCcw
-                      className={`mr-2 h-4 w-4 ${retrying ? "animate-spin" : ""}`}
-                    />
+                  <Button size="sm" variant="outline" disabled={retrying} onClick={handleRetry}>
+                    <RotateCcw className={cn("h-4 w-4", retrying && "animate-spin")} />
                     {retrying ? "Retrying…" : "Retry failed shots"}
                   </Button>
-                  <p className="text-[11px] text-muted-foreground">
-                    Successful clips are reused — credits charged only for shots
-                    that re-render. Edit prompts above if a shot was blocked.
+                  <p className="text-mono-sm text-ink/55">
+                    Successful clips are reused — credits charged only for shots that re-render.
                   </p>
                 </div>
               );
             })()}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       )}
 
       {/* Parameters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Parameters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {Object.entries(job.params || {}).map(([key, value]) => (
-              <div key={key} className="flex justify-between gap-4">
-                <span className="text-sm text-muted-foreground shrink-0">
-                  {key.replace(/_/g, " ")}
-                </span>
-                <span className="text-sm text-right truncate max-w-[60%]">
-                  {typeof value === "object"
-                    ? JSON.stringify(value)
-                    : String(value)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <section className="flex flex-col gap-4">
+        <header className="flex items-baseline gap-3">
+          <span className="text-mono-sm text-ink/40">§02</span>
+          <h2 className="text-h3 text-ink">Parameters.</h2>
+        </header>
+        <div className="border border-ink/15 divide-y divide-ink/15">
+          {Object.entries(job.params || {}).map(([key, value]) => (
+            <div key={key} className="grid grid-cols-[14rem_1fr] gap-4 px-5 py-3 items-baseline">
+              <span className="text-mono-sm text-ink/40 truncate">
+                {key.replace(/_/g, " ").toUpperCase()}
+              </span>
+              <span className="text-sm text-ink/85 truncate">
+                {typeof value === "object" ? JSON.stringify(value) : String(value)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Timeline */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Timeline</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Created</span>
-              <span>
-                {job.created_at
-                  ? new Date(job.created_at).toLocaleString()
-                  : "—"}
+      <section className="flex flex-col gap-4">
+        <header className="flex items-baseline gap-3">
+          <span className="text-mono-sm text-ink/40">§03</span>
+          <h2 className="text-h3 text-ink">Timeline.</h2>
+        </header>
+        <div className="border border-ink/15 divide-y divide-ink/15">
+          {[
+            { label: "Created", value: job.created_at },
+            { label: "Started", value: job.started_at },
+            { label: "Completed", value: job.completed_at },
+          ].map(({ label, value }) => (
+            <div
+              key={label}
+              className="grid grid-cols-[14rem_1fr] gap-4 px-5 py-3 items-baseline"
+            >
+              <span className="text-mono-sm text-ink/40">{label.toUpperCase()}</span>
+              <span className="text-mono-sm text-ink/85">
+                {value ? new Date(value).toLocaleString() : "—"}
               </span>
             </div>
-            <Separator />
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Started</span>
-              <span>
-                {job.started_at
-                  ? new Date(job.started_at).toLocaleString()
-                  : "—"}
-              </span>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Completed</span>
-              <span>
-                {job.completed_at
-                  ? new Date(job.completed_at).toLocaleString()
-                  : "—"}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

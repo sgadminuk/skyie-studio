@@ -10,7 +10,6 @@ import {
   Mic,
   Film,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProjects, createProject, deleteProject } from "@/lib/api";
 import { toast } from "sonner";
@@ -74,7 +72,6 @@ export default function ProjectsPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!newName.trim() || creating) return;
-
     setCreating(true);
     try {
       await createProject({
@@ -107,136 +104,140 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-[clamp(32px,5vh,64px)]">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your video generation projects
+      <header className="flex items-end justify-between gap-6 flex-wrap">
+        <div className="flex flex-col gap-2">
+          <span className="text-mono-sm text-ink/40">PROJECTS · §00</span>
+          <h1 className="text-h2 text-ink">Saved configurations.</h1>
+          <p className="text-ink/60 max-w-[60ch]">
+            Re-render existing projects with the same parameters, or branch off into a new variation.
           </p>
         </div>
         <Button onClick={() => setShowCreate(!showCreate)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Project
+          <Plus className="h-4 w-4" />
+          New project
         </Button>
-      </div>
+      </header>
 
-      {/* Create Form */}
+      {/* Create form */}
       {showCreate && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Create New Project</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreate} className="flex flex-wrap items-end gap-4">
-              <div className="flex-1 min-w-[200px] space-y-2">
-                <Label htmlFor="projectName">Project Name</Label>
-                <Input
-                  id="projectName"
-                  placeholder="My awesome video"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="w-48 space-y-2">
-                <Label>Workflow</Label>
-                <Select value={newWorkflow} onValueChange={setNewWorkflow}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="talking_head">Talking Head</SelectItem>
-                    <SelectItem value="broll">B-Roll</SelectItem>
-                    <SelectItem value="full_production">Full Production</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" disabled={creating || !newName.trim()}>
-                {creating ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="mr-2 h-4 w-4" />
-                )}
-                Create
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        <section
+          aria-labelledby="create-heading"
+          className="border border-ink/15 px-6 py-5 flex flex-col gap-4"
+        >
+          <header className="flex items-baseline gap-3">
+            <span className="text-mono-sm text-ink/40">§01</span>
+            <h2 id="create-heading" className="text-h3 text-ink">New project.</h2>
+          </header>
+          <form onSubmit={handleCreate} className="flex flex-wrap items-end gap-4">
+            <div className="flex-1 min-w-[200px] flex flex-col gap-2">
+              <Label htmlFor="projectName">Project name</Label>
+              <Input
+                id="projectName"
+                placeholder="my-awesome-video"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="w-48 flex flex-col gap-2">
+              <Label>Workflow</Label>
+              <Select value={newWorkflow} onValueChange={setNewWorkflow}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="talking_head">Talking Head</SelectItem>
+                  <SelectItem value="broll">B-Roll</SelectItem>
+                  <SelectItem value="full_production">Full Production</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" disabled={creating || !newName.trim()}>
+              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Create
+            </Button>
+          </form>
+        </section>
       )}
 
-      {/* Projects Grid */}
-      {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
+      {/* Projects list */}
+      <section aria-labelledby="list-heading" className="flex flex-col gap-4">
+        <header className="flex items-baseline gap-3">
+          <span className="text-mono-sm text-ink/40">§02</span>
+          <h2 id="list-heading" className="text-h3 text-ink">All projects.</h2>
+          {!loading && (
+            <span className="text-mono-sm text-ink/40">
+              {String(projects.length).padStart(3, "0")} total
+            </span>
+          )}
+        </header>
+
+        {loading ? (
+          <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-paper p-6 flex flex-col gap-3">
                 <Skeleton className="h-5 w-32" />
-              </CardHeader>
-              <CardContent className="space-y-2">
                 <Skeleton className="h-4 w-20" />
                 <Skeleton className="h-3 w-24" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : projects.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <FolderOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <p className="text-lg font-medium">No projects yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Create your first project to organize your work
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => {
-            const WorkflowIcon = WORKFLOW_ICONS[project.workflow] || Video;
-            return (
-              <Card key={project.id} className="group relative">
-                <CardHeader className="flex flex-row items-start justify-between">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <WorkflowIcon className="h-4 w-4 text-primary" />
+              </div>
+            ))}
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="border border-ink/15 px-6 py-12 flex flex-col items-center gap-3">
+            <FolderOpen className="h-10 w-10 text-ink/30" />
+            <span className="text-h3 text-ink">No projects yet.</span>
+            <span className="text-mono-sm text-ink/55">
+              Create one to organise your generations.
+            </span>
+          </div>
+        ) : (
+          <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
+            {projects.map((project) => {
+              const WorkflowIcon = WORKFLOW_ICONS[project.workflow] || Video;
+              return (
+                <article
+                  key={project.id}
+                  className="group relative bg-paper p-6 flex flex-col gap-4"
+                >
+                  <header className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center bg-ink/[0.06] border border-ink/10">
+                        <WorkflowIcon className="h-4 w-4 text-ink/70" />
+                      </div>
+                      <h3 className="text-h3 text-ink truncate">{project.name}</h3>
                     </div>
-                    <CardTitle className="text-base truncate">
-                      {project.name}
-                    </CardTitle>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-400"
-                    onClick={() => handleDelete(project.id)}
-                    disabled={deletingId === project.id}
-                  >
-                    {deletingId === project.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <Badge variant="secondary">
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(project.id)}
+                      disabled={deletingId === project.id}
+                      aria-label="Delete project"
+                      className="h-8 w-8 flex items-center justify-center text-ink/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                    >
+                      {deletingId === project.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  </header>
+                  <footer className="flex items-baseline justify-between border-t border-ink/15 pt-3">
+                    <span className="text-mono-sm text-ink/55">
                       {WORKFLOW_LABELS[project.workflow] || project.workflow}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
+                    </span>
+                    <span className="text-mono-sm text-ink/40">
                       {project.updated_at
                         ? new Date(project.updated_at).toLocaleDateString()
                         : new Date(project.created_at).toLocaleDateString()}
                     </span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                  </footer>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

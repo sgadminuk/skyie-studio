@@ -94,8 +94,8 @@ export default function TalkingHeadPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Talking Head</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-h2 text-ink">Talking Head</h1>
+        <p className="text-ink/60 mt-1">
           Create a professional talking head video from a script
         </p>
       </div>
@@ -163,7 +163,7 @@ export default function TalkingHeadPage() {
                   <p className="mt-2 text-sm text-muted-foreground">
                     Drag & drop an avatar photo, or click to browse
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-ink/60 mt-1">
                     PNG, JPG up to 10MB. Leave empty for default.
                   </p>
                 </div>

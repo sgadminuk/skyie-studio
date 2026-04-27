@@ -12,7 +12,6 @@ import {
   Upload,
   Play,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -112,13 +111,14 @@ export default function LibraryPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-4 w-64 mt-2" />
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-80 mt-1" />
         </div>
         <Skeleton className="h-10 w-80" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
           <Skeleton className="h-48" />
           <Skeleton className="h-48" />
           <Skeleton className="h-48" />
@@ -127,57 +127,59 @@ export default function LibraryPage() {
     );
   }
 
+  const totals = videos.length + images.length + avatars.length + voices.length;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Library</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your generated videos, avatars, and voices
+    <div className="flex flex-col gap-[clamp(32px,5vh,64px)]">
+      {/* Header */}
+      <header className="flex flex-col gap-2">
+        <span className="text-mono-sm text-ink/40">
+          LIBRARY · §00 · {String(totals).padStart(3, "0")} ASSETS
+        </span>
+        <h1 className="text-h2 text-ink">Asset library.</h1>
+        <p className="text-ink/60 max-w-[60ch]">
+          Generated videos, images, uploaded avatars, and voice references — all in one place.
         </p>
-      </div>
+      </header>
 
       <Tabs defaultValue="videos">
         <TabsList>
-          <TabsTrigger value="videos" className="gap-2">
-            <Video className="h-4 w-4" />
-            Videos ({videos.length})
+          <TabsTrigger value="videos">
+            <Video className="h-4 w-4 mr-2" />
+            Videos · {videos.length}
           </TabsTrigger>
-          <TabsTrigger value="images" className="gap-2">
-            <Sparkles className="h-4 w-4" />
-            Images ({images.length})
+          <TabsTrigger value="images">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Images · {images.length}
           </TabsTrigger>
-          <TabsTrigger value="avatars" className="gap-2">
-            <ImageIcon className="h-4 w-4" />
-            Avatars ({avatars.length})
+          <TabsTrigger value="avatars">
+            <ImageIcon className="h-4 w-4 mr-2" />
+            Avatars · {avatars.length}
           </TabsTrigger>
-          <TabsTrigger value="voices" className="gap-2">
-            <Mic2 className="h-4 w-4" />
-            Voices ({voices.length})
+          <TabsTrigger value="voices">
+            <Mic2 className="h-4 w-4 mr-2" />
+            Voices · {voices.length}
           </TabsTrigger>
         </TabsList>
 
         {/* Videos */}
-        <TabsContent value="videos" className="mt-4">
+        <TabsContent value="videos">
           {videos.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Video className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <p className="text-lg font-medium">No videos yet</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Generated videos will appear here
-                </p>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={Video}
+              title="No videos yet."
+              hint="Generated videos will appear here."
+            />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
               {videos.map((video) => {
                 const videoUrl = video.url.startsWith("http")
                   ? video.url
                   : `${API_URL}${video.url}`;
                 const isPlaying = playingVideo === video.filename;
                 return (
-                  <Card key={video.filename} className="overflow-hidden">
-                    <div className="aspect-video bg-black relative">
+                  <article key={video.filename} className="bg-paper overflow-hidden">
+                    <div className="aspect-video bg-ink/[0.06] relative">
                       {isPlaying ? (
                         <video
                           src={videoUrl}
@@ -190,50 +192,44 @@ export default function LibraryPage() {
                         </video>
                       ) : (
                         <button
-                          className="w-full h-full flex items-center justify-center bg-muted hover:bg-muted/80 transition-colors"
+                          type="button"
+                          aria-label={`Play ${video.filename}`}
+                          className="w-full h-full flex items-center justify-center bg-ink/[0.04] hover:bg-ink/[0.08] transition-colors"
                           onClick={() => setPlayingVideo(video.filename)}
                         >
-                          <Play className="h-10 w-10 text-muted-foreground" />
+                          <Play className="h-8 w-8 text-ink/55" />
                         </button>
                       )}
                     </div>
-                    <CardContent className="p-4">
-                      <p className="text-sm font-medium truncate">
-                        {video.filename}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
+                    <div className="p-4 flex flex-col gap-2">
+                      <p className="text-sm text-ink truncate">{video.filename}</p>
+                      <p className="text-mono-sm text-ink/40">
                         {(video.size_bytes / 1024 / 1024).toFixed(1)} MB
                       </p>
-                      <div className="flex gap-2 mt-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          asChild
-                        >
+                      <div className="flex gap-2 mt-1">
+                        <Button variant="outline" size="sm" className="flex-1" asChild>
                           <a href={videoUrl} download>
-                            <Download className="mr-1 h-3 w-3" />
+                            <Download className="h-3 w-3" />
                             Download
                           </a>
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
+                          aria-label="Delete video"
                           onClick={() => {
                             const jobId = video.path
                               .split("/")
-                              .find(
-                                (seg) =>
-                                  seg.length > 30 && seg.includes("-")
-                              );
+                              .find((seg) => seg.length > 30 && seg.includes("-"));
                             if (jobId) handleDeleteVideo(jobId);
                           }}
+                          className="hover:text-destructive"
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </article>
                 );
               })}
             </div>
@@ -241,53 +237,46 @@ export default function LibraryPage() {
         </TabsContent>
 
         {/* Images */}
-        <TabsContent value="images" className="mt-4">
+        <TabsContent value="images">
           {images.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Sparkles className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <p className="text-lg font-medium">No images yet</p>
-                <p className="text-sm text-muted-foreground mt-1">
+            <EmptyState
+              icon={Sparkles}
+              title="No images yet."
+              hint={
+                <>
                   Generate images from{" "}
-                  <Link href="/create/studio" className="underline">
+                  <Link href="/create/studio" className="text-signal hover:underline">
                     Gemini Studio
-                  </Link>
-                </p>
-              </CardContent>
-            </Card>
+                  </Link>.
+                </>
+              }
+            />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 bg-ink/15">
               {images.map((img) => {
                 const imgUrl = img.url.startsWith("http")
                   ? img.url
                   : `${API_URL}${img.url}`;
                 return (
-                  <Card key={img.path} className="overflow-hidden group">
+                  <article key={img.path} className="bg-paper overflow-hidden group">
                     <Link href={img.job_id ? `/jobs/${img.job_id}` : "#"}>
-                      <div className="aspect-square bg-muted overflow-hidden">
+                      <div className="aspect-square bg-ink/[0.06] overflow-hidden">
                         <img
                           src={imgUrl}
                           alt={img.filename}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                         />
                       </div>
                     </Link>
-                    <CardContent className="p-3">
-                      <p className="text-xs font-medium truncate">
-                        {img.filename}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
+                    <div className="p-3 flex flex-col gap-1.5">
+                      <p className="text-mono-sm text-ink truncate">{img.filename}</p>
+                      <p className="text-mono-sm text-ink/40">
                         {(img.size_bytes / 1024).toFixed(0)} KB
                       </p>
-                      <div className="flex gap-2 mt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 h-7 text-xs"
-                          asChild
-                        >
+                      <div className="flex gap-2 mt-1">
+                        <Button variant="outline" size="sm" className="flex-1 h-7" asChild>
                           <a href={imgUrl} download>
-                            <Download className="mr-1 h-3 w-3" />
+                            <Download className="h-3 w-3" />
                             Download
                           </a>
                         </Button>
@@ -295,7 +284,7 @@ export default function LibraryPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 w-7 p-0"
+                            className="h-7 w-7 hover:text-destructive"
                             onClick={() => handleDeleteImage(img.job_id!)}
                             aria-label="Delete image"
                           >
@@ -303,8 +292,8 @@ export default function LibraryPage() {
                           </Button>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </article>
                 );
               })}
             </div>
@@ -312,20 +301,21 @@ export default function LibraryPage() {
         </TabsContent>
 
         {/* Avatars */}
-        <TabsContent value="avatars" className="mt-4">
-          <div className="mb-4">
+        <TabsContent value="avatars" className="flex flex-col gap-4">
+          <div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => avatarInputRef.current?.click()}
             >
-              <Upload className="mr-2 h-3 w-3" />
-              Upload Avatar
+              <Upload className="h-3 w-3" />
+              Upload avatar
             </Button>
             <input
               ref={avatarInputRef}
               type="file"
               accept="image/png,image/jpeg,image/webp"
+              aria-label="Upload avatar image"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -334,24 +324,20 @@ export default function LibraryPage() {
             />
           </div>
           {avatars.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <ImageIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <p className="text-lg font-medium">No avatars uploaded</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Upload avatar photos from the Talking Head workflow
-                </p>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={ImageIcon}
+              title="No avatars uploaded."
+              hint="Upload avatar photos from the Talking Head workflow."
+            />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid gap-[1px] sm:grid-cols-3 lg:grid-cols-4 bg-ink/15">
               {avatars.map((avatar) => {
                 const avatarUrl = avatar.url.startsWith("http")
                   ? avatar.url
                   : `${API_URL}${avatar.url}`;
                 return (
-                  <Card key={avatar.filename} className="overflow-hidden">
-                    <div className="aspect-square bg-muted">
+                  <article key={avatar.filename} className="bg-paper overflow-hidden">
+                    <div className="aspect-square bg-ink/[0.06]">
                       <img
                         src={avatarUrl}
                         alt={avatar.filename}
@@ -361,12 +347,10 @@ export default function LibraryPage() {
                         }}
                       />
                     </div>
-                    <CardContent className="p-3">
-                      <p className="text-xs font-medium truncate">
-                        {avatar.filename}
-                      </p>
-                    </CardContent>
-                  </Card>
+                    <div className="p-3">
+                      <p className="text-mono-sm text-ink truncate">{avatar.filename}</p>
+                    </div>
+                  </article>
                 );
               })}
             </div>
@@ -374,20 +358,21 @@ export default function LibraryPage() {
         </TabsContent>
 
         {/* Voices */}
-        <TabsContent value="voices" className="mt-4">
-          <div className="mb-4">
+        <TabsContent value="voices" className="flex flex-col gap-4">
+          <div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => voiceInputRef.current?.click()}
             >
-              <Upload className="mr-2 h-3 w-3" />
-              Upload Voice Reference
+              <Upload className="h-3 w-3" />
+              Upload voice reference
             </Button>
             <input
               ref={voiceInputRef}
               type="file"
               accept="audio/wav,audio/mp3,audio/mpeg,audio/ogg"
+              aria-label="Upload voice reference"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -396,32 +381,45 @@ export default function LibraryPage() {
             />
           </div>
           {voices.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Mic2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <p className="text-lg font-medium">No voices available</p>
-              </CardContent>
-            </Card>
+            <EmptyState icon={Mic2} title="No voices available." />
           ) : (
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               {voices.map((voice) => (
-                <Card key={voice.id}>
-                  <CardContent className="flex items-center gap-4 py-3">
-                    <Mic2 className="h-5 w-5 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{voice.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {voice.language.toUpperCase()} &middot;{" "}
-                        {voice.type === "builtin" ? "Built-in" : "Cloned"}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+                <article
+                  key={voice.id}
+                  className="border border-ink/15 px-5 py-4 flex items-center gap-4"
+                >
+                  <Mic2 className="h-4 w-4 text-ink/55 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-ink">{voice.name}</p>
+                    <p className="text-mono-sm text-ink/55 mt-1">
+                      {voice.language.toUpperCase()} · {voice.type === "builtin" ? "Built-in" : "Cloned"}
+                    </p>
+                  </div>
+                </article>
               ))}
             </div>
           )}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  title,
+  hint,
+}: {
+  icon: React.ElementType;
+  title: string;
+  hint?: React.ReactNode;
+}) {
+  return (
+    <div className="border border-ink/15 px-6 py-16 flex flex-col items-center gap-3">
+      <Icon className="h-10 w-10 text-ink/30" />
+      <span className="text-h3 text-ink">{title}</span>
+      {hint && <span className="text-mono-sm text-ink/55 text-center max-w-[40ch]">{hint}</span>}
     </div>
   );
 }

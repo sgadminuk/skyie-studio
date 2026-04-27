@@ -170,7 +170,7 @@ export function BrandForm({
               <div className="h-28 w-28 rounded-md border bg-muted flex items-center justify-center p-2 shrink-0 overflow-hidden">
                 {logoError ? (
                   <div className="flex flex-col items-center justify-center text-center text-[9px] text-muted-foreground gap-0.5 px-1">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    <AlertTriangle className="h-4 w-4 text-signal" />
                     <span>Preview failed</span>
                     <a
                       href={logoUrl}
@@ -226,7 +226,7 @@ export function BrandForm({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="text-muted-foreground hover:text-red-400"
+                  className="text-ink/55 hover:text-destructive"
                   onClick={() => {
                     update("logo_preview_url", null);
                     update("pending_logo_path", null);

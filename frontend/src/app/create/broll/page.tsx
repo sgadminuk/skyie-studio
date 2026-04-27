@@ -79,8 +79,8 @@ export default function BrollPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">B-Roll</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-h2 text-ink">B-Roll</h1>
+        <p className="text-ink/60 mt-1">
           Generate cinematic B-roll from text prompts
         </p>
       </div>

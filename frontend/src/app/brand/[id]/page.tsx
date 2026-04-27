@@ -5,10 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  BrandForm,
-  type BrandFormValues,
-} from "@/components/brand-form";
+import { BrandForm, type BrandFormValues } from "@/components/brand-form";
 import {
   deleteBrandProfile,
   getBrandProfile,
@@ -110,57 +107,65 @@ export default function EditBrandPage() {
   if (loading || !initial || !brand) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin text-ink/55" />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/brand">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">{brand.name}</h1>
-          <p className="text-sm text-muted-foreground">Edit brand profile</p>
+    <div className="mx-auto w-full max-w-4xl flex flex-col gap-[clamp(24px,4vh,48px)]">
+      <header className="flex flex-col gap-4">
+        <Link
+          href="/brand"
+          className="text-mono-sm text-ink/55 hover:text-ink flex items-center gap-2 transition-colors w-fit"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          BACK TO BRANDS
+        </Link>
+        <div className="flex items-end justify-between gap-6 flex-wrap">
+          <div className="flex flex-col gap-2">
+            <span className="text-mono-sm text-ink/40">BRAND · EDIT</span>
+            <h1 className="text-h2 text-ink">{brand.name}</h1>
+            <p className="text-mono-sm text-ink/55">
+              Edit profile · last updated {new Date(brand.updated_at ?? brand.created_at).toLocaleDateString()}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="inline-flex">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoReplace}
+                aria-label="Replace logo"
+              />
+              <span className="inline-flex items-center gap-2 px-4 py-2 border border-ink/40 hover:border-ink hover:bg-ink hover:text-paper transition-colors cursor-pointer text-mono-sm tracking-[0.18em] uppercase">
+                <Upload className="h-3 w-3" />
+                Replace logo
+              </span>
+            </label>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Trash2 className="h-3 w-3" />
+                  Delete
+                </>
+              )}
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="inline-flex">
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleLogoReplace}
-              aria-label="Replace logo"
-            />
-            <span className="inline-flex items-center text-xs gap-1 px-3 py-2 rounded-md border hover:bg-accent cursor-pointer">
-              <Upload className="h-3 w-3" /> Replace logo
-            </span>
-          </label>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-red-400 hover:text-red-500"
-            onClick={handleDelete}
-            disabled={deleting}
-          >
-            {deleting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <Trash2 className="mr-1 h-3 w-3" /> Delete
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
+      </header>
 
       <BrandForm
         initial={initial}
-        submitLabel="Save Changes"
+        submitLabel="Save changes"
         submitting={submitting}
         onSubmit={handleSave}
       />

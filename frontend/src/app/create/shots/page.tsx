@@ -209,8 +209,8 @@ export default function ShotsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Shot Creator</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-h2 text-ink">Shot Creator</h1>
+        <p className="text-ink/60 mt-1">
           Upload images, add motion prompts, and generate a stitched video
         </p>
       </div>
@@ -258,7 +258,7 @@ export default function ShotsPage() {
                     <span className="text-xs text-muted-foreground">s</span>
                   </div>
                   {shots.length > 1 && (
-                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-400"
+                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-ink/55 hover:text-destructive"
                       onClick={() => removeShot(shot.id)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

@@ -132,8 +132,8 @@ export default function StoryboardPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Storyboard Editor</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-h2 text-ink">Storyboard Editor</h1>
+        <p className="text-ink/60 mt-1">
           Plan your video scene by scene, then generate with a single click
         </p>
       </div>
@@ -244,7 +244,7 @@ export default function StoryboardPage() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-red-400"
+                    className="h-7 w-7 text-ink/55 hover:text-destructive"
                     onClick={() => removeScene(scene.id)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />

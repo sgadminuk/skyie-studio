@@ -106,8 +106,8 @@ export default function V2VPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Video Transform</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-h2 text-ink">Video Transform</h1>
+        <p className="text-ink/60 mt-1">
           Transform or extend existing videos with AI
         </p>
       </div>

@@ -202,11 +202,11 @@ export default function MultiShotPage() {
     <div className="container mx-auto max-w-6xl py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+          <h1 className="text-h2 text-ink flex items-center gap-2">
             <Film className="h-7 w-7" />
             Multi-shot studio
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-ink/60 mt-1">
             Up to 10 Veo 3.1 shots, each with its own reference images and prompt — stitched into one MP4.
           </p>
         </div>

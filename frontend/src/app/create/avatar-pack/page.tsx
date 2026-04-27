@@ -90,13 +90,13 @@ export default function AvatarPackPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">AI Avatar Pack</h1>
+          <h1 className="text-h2 text-ink">AI Avatar Pack</h1>
           <Badge variant="default" className="text-[10px]">
             <Sparkles className="h-3 w-3 mr-1" />
             Nano Banana
           </Badge>
         </div>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-ink/60 mt-1">
           Upload one photo. Get a pack of diverse portraits — LinkedIn,
           beach, party, traditional, gym, group shots — all the same person,
           different scenes and moods.
@@ -106,7 +106,7 @@ export default function AvatarPackPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Reference Photo</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-ink/60 mt-1">
             One clear photo of the subject. Front-facing, decent lighting.
             Identity comes from this image alone.
           </p>
@@ -206,7 +206,7 @@ export default function AvatarPackPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Steering (optional)</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-ink/60 mt-1">
             Optional brief to bias the prompt mix. Leave empty for the
             default broad set (LinkedIn, party, beach, gym, traditional, etc).
           </p>
