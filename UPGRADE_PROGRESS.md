@@ -15,8 +15,8 @@
 | Phase | Title | Status | Branch | Time est. | Reference |
 |---|---|---|---|---|---|
 | **0** | Adapt compose to new shared proxy | ✅ done | `feat/ui-refresh` | 15 min | this commit |
-| **1** | Tailwind 3 → 4 (frontend) | 🔄 in progress | `chore/tw4` | ~1 day | [§1](#phase-1) |
-| **2** | Next 14 → 15 + React 18 → 19 | ⬜ not started | `chore/next-15-react-19` | ~2 days | [§2](#phase-2) |
+| **1** | Tailwind 3 → 4 (frontend) | ✅ done | `chore/tw4` | ~1 day | [§1](#phase-1) |
+| **2** | Next 14 → 15 + React 18 → 19 | ✅ done | `chore/next-15-react-19` | ~half day | [§2](#phase-2) |
 | **3** | Next 15 → 16 | ⬜ not started | `chore/next-16` | ~1 day | [§3](#phase-3) |
 | **4** | Merge marketing into frontend (route groups + hostname middleware) | ⬜ not started | `feat/unified-app` | ~1-2 days | [§4](#phase-4) |
 | **5** | Drop marketing/, finalise compose, verify | ⬜ not started | (in #4) | 30 min | [§5](#phase-5) |
@@ -80,7 +80,46 @@ React 19.
 
 ---
 
-## Phase 2 — Next 14 → 15 + React 18 → 19
+## Phase 2 — Next 14 → 15 + React 18 → 19  ✅ done
+
+**Outcome (2026-04-27):** half a day, no manual code changes needed.
+
+What landed:
+- `next: 15.5.15`, `react: 19.2.5`, `react-dom: 19.2.5`
+- `@types/react: 19.2.14`, `@types/react-dom: 19.2.3`
+- `eslint-config-next: 15.5.15`
+- `package-lock.json` regenerated via `npm install`
+
+What didn't change:
+- `next-async-request-api` codemod ran across 64 files and modified 0.
+  We use `useParams()` / `useSearchParams()` (client hooks) everywhere
+  — no synchronous `params` / `searchParams` server-prop reads to
+  convert. Phase 3 (Next 16) won't bite us on this either.
+- Radix primitives (`@radix-ui/react-*` 1.x / 2.x) installed cleanly
+  against React 19 without version bumps. Their `forwardRef` types
+  are React 19-compatible already.
+
+Validation:
+- `npx tsc --noEmit` clean — no type regressions
+- `npm run build` clean — all 22 routes prerender + /icon /robots.txt
+- Browser smoke at `/login` (1280×800): zero console errors, custom
+  utilities render, signal focus ring on input, dark mode tokens
+  swap correctly
+- Footprint: shared chunk grew from 87.4 KB → 102 KB (React 19's
+  ~14 KB delta is expected; under the 180 KB initial-JS budget)
+
+Notes for Phase 3 (Next 15 → 16):
+- The `<img>` ESLint warnings in 8 files (jobs/[id], library, brand-form,
+  talking-head, brand-form, etc.) are pre-existing — Next.js 15.x has
+  more verbose lint output. They are warnings, not errors. Phase 3
+  may flag them as errors; either suppress with `// eslint-disable` or
+  swap to `<Image>` selectively (the API_URL-prefixed avatar / brand
+  logo previews are good `<Image>` candidates; placeholder UI in
+  jobs/[id] avatar-pack tiles probably stays as `<img>`).
+
+---
+
+## Phase 2 — original notes (preserved for reference)
 
 **Why coupled:** Next 15 is the first version with full React 19 support.
 Doing them as one branch means one CI run, one diff to review.
