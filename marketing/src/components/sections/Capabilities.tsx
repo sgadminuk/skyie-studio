@@ -19,31 +19,27 @@ import { useMotionEnabled } from "@/components/system/MotionPolicyProvider";
  * Reduced motion: cells stay collapsed; tapping shows demo without animation.
  */
 
-const HOVER_HOLD_MS = 1600;
-
 export function Capabilities() {
   const motionEnabled = useMotionEnabled();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const timeoutRef = useRef<number | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
 
-  // Auto-collapse after HOLD_MS for hover (not for tap)
-  const expandTransient = (id: string) => {
-    setExpandedId(id);
-    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
-    timeoutRef.current = window.setTimeout(() => {
-      setExpandedId(null);
-      timeoutRef.current = null;
-    }, HOVER_HOLD_MS);
-  };
-
-  const expandSticky = (id: string) => {
-    if (timeoutRef.current !== null) {
-      window.clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
+  /**
+   * Hover handlers live on the <li>, NOT the <button> — mouseenter /
+   * mouseleave do not bubble for child-to-child transitions, so moving
+   * the cursor across descendants of the cell does not fire spurious
+   * leave events. (The previous implementation put handlers on the
+   * button and used `transform: scale(2)` on the overlay; the moment
+   * the overlay covered the button, mouseleave fired on the button and
+   * collapsed → mouseenter on the now-revealed button → flicker loop.)
+   *
+   * No 1.6s auto-collapse timer either — the cursor's presence is the
+   * lifecycle. Leaving the cell collapses; entering expands.
+   */
+  const open = (id: string) => setExpandedId(id);
+  const close = () => setExpandedId(null);
+  const toggle = (id: string) =>
     setExpandedId((prev) => (prev === id ? null : id));
-  };
 
   // Click outside collapses (touch path)
   useEffect(() => {
@@ -74,66 +70,62 @@ export function Capabilities() {
         role="list"
         className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-[1px] bg-ink/15"
       >
-        {capabilities.map((c) => (
-          <li
-            key={c.id}
-            className={[
-              "relative bg-paper p-5 min-h-[180px] flex flex-col justify-between transition-opacity",
-              expandedId && expandedId !== c.id ? "opacity-30" : "opacity-100",
-            ].join(" ")}
-          >
-            <button
-              type="button"
-              className="absolute inset-0 cursor-pointer text-left p-5 flex flex-col justify-between"
-              onMouseEnter={() => motionEnabled && expandTransient(c.id)}
-              onMouseLeave={() => {
-                if (timeoutRef.current !== null) {
-                  window.clearTimeout(timeoutRef.current);
-                  timeoutRef.current = null;
-                }
-                setExpandedId(null);
-              }}
-              onFocus={() => motionEnabled && expandTransient(c.id)}
-              onClick={(e) => {
-                e.stopPropagation();
-                expandSticky(c.id);
-              }}
-              aria-expanded={expandedId === c.id ? "true" : "false"}
-              aria-label={`${c.title}: ${c.blurb}`}
-              data-cursor="ring"
+        {capabilities.map((c) => {
+          const isExpanded = expandedId === c.id;
+          const isDimmed = expandedId !== null && !isExpanded;
+          return (
+            <li
+              key={c.id}
+              className={[
+                "relative bg-paper p-5 min-h-[180px] flex flex-col justify-between",
+                "transition-[opacity,grid-column,grid-row] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                isExpanded ? "z-10 col-span-2 row-span-2 min-h-[280px]" : "",
+                isDimmed ? "opacity-30" : "opacity-100",
+              ].join(" ")}
+              onMouseEnter={() => motionEnabled && open(c.id)}
+              onMouseLeave={() => motionEnabled && close()}
             >
-              <span className="text-mono-sm text-ink/40">{c.numeral}</span>
-              <div className="flex flex-col gap-2">
-                <span className="text-h3 text-ink">{c.title}</span>
-                <span className="text-mono-sm text-ink/70">{c.blurb}</span>
-              </div>
-            </button>
-
-            {/* In-place expansion overlay — only for the expanded cell */}
-            {expandedId === c.id ? (
-              <div
-                className="absolute -inset-[1px] z-10 bg-paper border border-ink p-6 flex flex-col gap-4 overflow-hidden"
-                style={{
-                  // Grow to fill grid: each cell is 1fr; we expand to 4 cols × 2 rows.
-                  // Using `position: absolute` with `inset` would only fill the cell.
-                  // Instead, we scale the overlay outward visually via transform.
-                  transform: "scale(2)",
-                  transformOrigin: "center",
-                  transition: "transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)",
-                  pointerEvents: "auto",
+              <button
+                type="button"
+                className="absolute inset-0 cursor-pointer text-left p-5 flex flex-col justify-between"
+                onFocus={() => motionEnabled && open(c.id)}
+                onBlur={() => motionEnabled && close()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggle(c.id);
                 }}
-                onClick={(e) => e.stopPropagation()}
+                aria-expanded={isExpanded}
+                aria-label={`${c.title}: ${c.blurb}`}
+                data-cursor="ring"
               >
                 <span className="text-mono-sm text-ink/40">{c.numeral}</span>
-                <span className="text-h3 text-ink">{c.title}</span>
-                <span className="text-mono-sm text-ink/70 max-w-[42ch]">{c.blurb}</span>
-                <div className="flex-1 flex items-center justify-center">
-                  <CapabilityDemo demo={c.demo} />
+                <div className="flex flex-col gap-2">
+                  <span className="text-h3 text-ink">{c.title}</span>
+                  <span className="text-mono-sm text-ink/70">{c.blurb}</span>
                 </div>
-              </div>
-            ) : null}
-          </li>
-        ))}
+              </button>
+
+              {/* Demo overlay — only renders for the expanded cell. The
+                  cell already grew via grid-span, so the overlay simply
+                  fills it. No transform tricks. */}
+              {isExpanded ? (
+                <div
+                  className="absolute inset-0 bg-paper border border-ink p-6 flex flex-col gap-4 overflow-hidden pointer-events-none"
+                  aria-hidden
+                >
+                  <span className="text-mono-sm text-ink/40">{c.numeral}</span>
+                  <span className="text-h3 text-ink">{c.title}</span>
+                  <span className="text-mono-sm text-ink/70 max-w-[42ch]">
+                    {c.blurb}
+                  </span>
+                  <div className="flex-1 flex items-center justify-center">
+                    <CapabilityDemo demo={c.demo} />
+                  </div>
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
       </ul>
 
       <p className="text-mono-sm text-ink/45">

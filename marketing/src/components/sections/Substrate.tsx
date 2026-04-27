@@ -72,8 +72,14 @@ export function Substrate() {
         Substrate
       </h2>
 
-      {/* Sticky inner — the field stays put while statements cycle */}
-      <div className="sticky top-0 h-screen flex items-center justify-center overflow-hidden">
+      {/* Sticky inner — the field stays put while statements cycle.
+          100svh (small viewport height) keeps the inner pinned to the
+          *visible* viewport on mobile, so the address bar can't push
+          content off the bottom. */}
+      <div
+        className="sticky top-0 flex items-center justify-center overflow-hidden"
+        style={{ height: "100svh" }}
+      >
         {/* Drift field background, 4% opacity per brief */}
         <div
           aria-hidden
@@ -83,16 +89,20 @@ export function Substrate() {
           <DriftMark
             size="min(180vw, 2400px)"
             speed={9}
-            style={{ minWidth: "100vw", minHeight: "100vh" }}
+            style={{ minWidth: "100vw", minHeight: "100svh" }}
           />
         </div>
 
-        {/* Foreground statements */}
-        <ol className="relative px-[var(--gutter)] max-w-[60rem] flex flex-col gap-0 m-0 p-0 list-none">
+        {/* Foreground statements — sized so even the longest line wraps
+            to 3 lines tops on every viewport we support */}
+        <ol
+          className="relative w-full px-[var(--gutter)] py-[clamp(64px,10vh,128px)] m-0 list-none flex items-center justify-center"
+          style={{ minHeight: "100svh" }}
+        >
           {substrateStatements.map((s, i) => (
             <li
               key={i}
-              className="absolute inset-0 flex items-center transition-opacity"
+              className="absolute inset-0 flex items-center justify-center px-[var(--gutter)] py-[clamp(64px,10vh,128px)] transition-opacity"
               style={{
                 opacity: active === i ? 1 : 0,
                 transitionDuration: "560ms",
@@ -101,7 +111,18 @@ export function Substrate() {
               }}
               aria-current={active === i ? "step" : undefined}
             >
-              <span className="text-h1 text-ink/95 leading-[1.05] max-w-[24ch]">{s}</span>
+              <span
+                className="text-ink/95 leading-[1.1] max-w-[28ch]"
+                style={{
+                  // Smaller than text-h1 so the longest 68-char statement
+                  // wraps to ≤3 lines and never overflows 100svh.
+                  fontSize: "clamp(1.75rem, 3vw + 1rem, 4rem)",
+                  fontWeight: 380,
+                  letterSpacing: "-0.03em",
+                }}
+              >
+                {s}
+              </span>
             </li>
           ))}
         </ol>
