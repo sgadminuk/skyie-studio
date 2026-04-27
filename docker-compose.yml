@@ -106,15 +106,17 @@ services:
           cpus: "1.0"
           memory: 512M
     labels:
+      # Skyie shared proxy (`/opt/skyie-proxy/` on the VPS) supplies
+      # global HTTP→HTTPS redirect, security headers, compression, and
+      # Cloudflare Origin CA TLS for *.skyie.studio. Apps only declare
+      # their host + port + health check.
       - "traefik.enable=true"
       - "traefik.docker.network=SkyieProxy"
-      # HTTPS Router
       - "traefik.http.routers.skyie-studio-api.rule=Host(`api.skyie.studio`)"
       - "traefik.http.routers.skyie-studio-api.entrypoints=websecure"
       - "traefik.http.routers.skyie-studio-api.tls=true"
-      - "traefik.http.routers.skyie-studio-api.tls.certresolver=letsencrypt"
       - "traefik.http.services.skyie-studio-api.loadbalancer.server.port=8000"
-      # Traefik health check — stops routing to unhealthy backend
+      # App-specific health check — Traefik stops routing to unhealthy backends
       - "traefik.http.services.skyie-studio-api.loadbalancer.healthcheck.path=/api/v1/health"
       - "traefik.http.services.skyie-studio-api.loadbalancer.healthcheck.interval=10s"
       - "traefik.http.services.skyie-studio-api.loadbalancer.healthcheck.timeout=5s"
@@ -194,17 +196,15 @@ services:
           cpus: "0.5"
           memory: 256M
     labels:
+      # Frontend will eventually serve both surfaces (skyie.studio +
+      # app.skyie.studio) once Phase 4 of the migration merges marketing
+      # routes under route groups. For now it only claims app.skyie.studio.
+      # See UPGRADE_PROGRESS.md.
       - "traefik.enable=true"
       - "traefik.docker.network=SkyieProxy"
-      # HTTPS Router
-      # NOTE: dashboard moved to app.skyie.studio. The apex skyie.studio
-      # is now claimed by the marketing site (deployed off-VPS — see
-      # DEPLOYMENT.md). Traefik will auto-issue a Let's Encrypt cert for
-      # the new host on first request.
       - "traefik.http.routers.skyie-studio.rule=Host(`app.skyie.studio`)"
       - "traefik.http.routers.skyie-studio.entrypoints=websecure"
       - "traefik.http.routers.skyie-studio.tls=true"
-      - "traefik.http.routers.skyie-studio.tls.certresolver=letsencrypt"
       - "traefik.http.services.skyie-studio.loadbalancer.server.port=3000"
 
 networks:
