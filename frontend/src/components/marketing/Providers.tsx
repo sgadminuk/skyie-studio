@@ -1,0 +1,24 @@
+"use client";
+
+import { type ReactNode } from "react";
+import { MotionPolicyProvider } from "@/components/skyie/MotionPolicyProvider";
+import { DriftCursor } from "@/components/skyie/DriftCursor";
+import { SmoothScroll } from "./SmoothScroll";
+
+/**
+ * Client provider tree. Mounts at the root layout boundary so every
+ * descendant can read motion policy + share the pointer subscription.
+ *
+ * Lenis + GSAP context are introduced in a later commit (route-segment
+ * scoped); they are intentionally NOT here — they only run on `/`.
+ */
+
+export function Providers({ children }: { children: ReactNode }) {
+  return (
+    <MotionPolicyProvider>
+      <SmoothScroll />
+      {children}
+      <DriftCursor />
+    </MotionPolicyProvider>
+  );
+}

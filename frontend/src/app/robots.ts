@@ -1,15 +1,24 @@
 import type { MetadataRoute } from "next";
 
 /**
- * The dashboard is auth-walled — there's nothing for crawlers to see.
- * Defence-in-depth: explicit Disallow at the robots level *and* the
- * `robots: { index: false }` directive in the root layout's metadata.
+ * Generates /robots.txt at build time.
  *
- * The marketing site at https://skyie.studio is the public surface and
- * has its own sitemap + permissive robots.txt.
+ * /dev is the in-repo primitive exhibit (per the build directive), not
+ * for public indexing. Everything else is fair game.
  */
+
+const BASE = "https://skyie.studio";
+
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: [{ userAgent: "*", disallow: "/" }],
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/dev", "/api/"],
+      },
+    ],
+    sitemap: `${BASE}/sitemap.xml`,
+    host: BASE,
   };
 }
