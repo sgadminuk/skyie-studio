@@ -3,8 +3,10 @@ import type { MetadataRoute } from "next";
 /**
  * Generates /robots.txt at build time.
  *
- * /dev is the in-repo primitive exhibit (per the build directive), not
- * for public indexing. Everything else is fair game.
+ * Served on both hosts via the unified Next process. The dashboard
+ * (/dashboard/*) and the in-repo primitive exhibit (/dev) should not
+ * be indexed on the marketing apex; the (marketing) routes are fair
+ * game.
  */
 
 const BASE = "https://skyie.studio";
@@ -15,7 +17,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/dev", "/api/"],
+        disallow: ["/dev", "/dashboard", "/login", "/register", "/api/"],
       },
     ],
     sitemap: `${BASE}/sitemap.xml`,
