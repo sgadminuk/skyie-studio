@@ -2,17 +2,20 @@ import { Threshold } from "@/components/sections/Threshold";
 import { Hero } from "@/components/sections/Hero";
 import { Substrate } from "@/components/sections/Substrate";
 import { Specimen } from "@/components/sections/Specimen";
+import { Capabilities } from "@/components/sections/Capabilities";
+import { Workshop } from "@/components/sections/Workshop";
 import { Numbers } from "@/components/sections/Numbers";
 import { AccessSection } from "@/components/sections/AccessSection";
 
 /**
- * Home · narrative spine.
+ * Home · all eight sections, composed in the order brief §4.1 requires.
  *
- * Composition order matches brief §4.1: §0 Threshold (curtain) → §1 Hero
- * → §2 Substrate → §3 Specimen → §6 Numbers → §7 Access.
+ *   §0 Threshold → §1 Hero → §2 Substrate → §3 Specimen →
+ *   §4 Capabilities → §5 Workshop → §6 Numbers → §7 Access.
  *
- * §4 Capabilities and §5 Workshop slot in between §3 and §6 in a later
- * commit — they're the interactive heavy-lifting (§10 step 10).
+ * GSAP ScrollTrigger pinning per the DECISIONS.md table is wired in a
+ * follow-up commit; the sections work without it (each manages its own
+ * scroll-driven state via rAF / IntersectionObserver).
  */
 export default function Home() {
   return (
@@ -22,6 +25,8 @@ export default function Home() {
         <Hero />
         <Substrate />
         <Specimen />
+        <Capabilities />
+        <Workshop />
         <Numbers />
         <AccessSection />
       </main>
