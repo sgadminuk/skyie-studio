@@ -91,7 +91,7 @@ export function Topbar() {
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/settings" className="cursor-pointer">
+                <Link href="/dashboard/settings" className="cursor-pointer">
                   <UserIcon className="mr-2 h-4 w-4" />
                   Settings
                 </Link>

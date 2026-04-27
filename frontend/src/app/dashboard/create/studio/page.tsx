@@ -340,7 +340,7 @@ export default function StudioPage() {
           {brands.length === 0 ? (
             <p className="text-xs text-muted-foreground">
               Create a brand profile to steer generation with your tone, colors, and logo.{" "}
-              <Link href="/brand/new" className="underline">
+              <Link href="/dashboard/brand/new" className="underline">
                 Create one →
               </Link>
             </p>

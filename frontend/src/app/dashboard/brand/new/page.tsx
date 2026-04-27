@@ -112,7 +112,7 @@ export default function NewBrandPage() {
     <div className="mx-auto w-full max-w-4xl flex flex-col gap-[clamp(24px,4vh,48px)]">
       <header className="flex flex-col gap-3">
         <Link
-          href="/brand"
+          href="/dashboard/brand"
           className="text-mono-sm text-ink/55 hover:text-ink flex items-center gap-2 transition-colors w-fit"
         >
           <ArrowLeft className="h-3.5 w-3.5" />

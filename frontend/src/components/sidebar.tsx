@@ -38,24 +38,24 @@ import { DriftMark } from "@/components/skyie/DriftMark";
  */
 
 const NAV_ITEMS = [
-  { href: "/",         label: "Dashboard", icon: LayoutDashboard, idx: "01" },
-  { href: "/create",   label: "Create",    icon: Wand2,           idx: "02" },
-  { href: "/brand",    label: "Brand Kit", icon: Palette,         idx: "03" },
-  { href: "/library",  label: "Library",   icon: Library,         idx: "04" },
-  { href: "/projects", label: "Projects",  icon: FolderOpen,      idx: "05" },
-  { href: "/settings", label: "Settings",  icon: Settings,        idx: "06" },
+  { href: "/dashboard",         label: "Dashboard", icon: LayoutDashboard, idx: "01" },
+  { href: "/dashboard/create",   label: "Create",    icon: Wand2,           idx: "02" },
+  { href: "/dashboard/brand",    label: "Brand Kit", icon: Palette,         idx: "03" },
+  { href: "/dashboard/library",  label: "Library",   icon: Library,         idx: "04" },
+  { href: "/dashboard/projects", label: "Projects",  icon: FolderOpen,      idx: "05" },
+  { href: "/dashboard/settings", label: "Settings",  icon: Settings,        idx: "06" },
 ];
 
 const CREATE_ITEMS = [
-  { href: "/create/studio",       label: "Gemini Studio",     icon: Layers,    idx: "01" },
-  { href: "/create/multi-shot",   label: "Multi-Shot Studio", icon: Film,      idx: "02" },
-  { href: "/create/director",     label: "AI Director",       icon: Sparkles,  idx: "03" },
-  { href: "/create/shots",        label: "Shot Creator",      icon: ImagePlus, idx: "04" },
-  { href: "/create/v2v",          label: "Video Transform",   icon: RefreshCw, idx: "05" },
-  { href: "/create/talking-head", label: "Talking Head",      icon: Mic,       idx: "06" },
-  { href: "/create/broll",        label: "B-Roll",            icon: Film,      idx: "07" },
-  { href: "/create/production",   label: "Full Production",   icon: Video,     idx: "08" },
-  { href: "/create/storyboard",   label: "Storyboard",        icon: Film,      idx: "09" },
+  { href: "/dashboard/create/studio",       label: "Gemini Studio",     icon: Layers,    idx: "01" },
+  { href: "/dashboard/create/multi-shot",   label: "Multi-Shot Studio", icon: Film,      idx: "02" },
+  { href: "/dashboard/create/director",     label: "AI Director",       icon: Sparkles,  idx: "03" },
+  { href: "/dashboard/create/shots",        label: "Shot Creator",      icon: ImagePlus, idx: "04" },
+  { href: "/dashboard/create/v2v",          label: "Video Transform",   icon: RefreshCw, idx: "05" },
+  { href: "/dashboard/create/talking-head", label: "Talking Head",      icon: Mic,       idx: "06" },
+  { href: "/dashboard/create/broll",        label: "B-Roll",            icon: Film,      idx: "07" },
+  { href: "/dashboard/create/production",   label: "Full Production",   icon: Video,     idx: "08" },
+  { href: "/dashboard/create/storyboard",   label: "Storyboard",        icon: Film,      idx: "09" },
 ];
 
 export function Sidebar() {
@@ -74,7 +74,7 @@ export function Sidebar() {
       {/* Logo row */}
       <div className="flex h-16 items-center justify-between border-b border-ink/15 px-3">
         <Link
-          href="/"
+          href="/dashboard"
           aria-label="Skyie Studio · home"
           className="flex items-center gap-3 text-ink"
         >
@@ -108,7 +108,7 @@ export function Sidebar() {
               isOpen={isOpen}
               isActive={
                 item.href === "/"
-                  ? pathname === "/"
+                  ? pathname === "/dashboard"
                   : pathname.startsWith(item.href)
               }
             />
@@ -116,18 +116,18 @@ export function Sidebar() {
 
           {user?.is_admin && (
             <NavLink
-              href="/admin"
+              href="/dashboard/admin"
               label="Admin"
               idx="07"
               icon={Shield}
               isOpen={isOpen}
-              isActive={pathname.startsWith("/admin")}
+              isActive={pathname.startsWith("/dashboard/admin")}
             />
           )}
         </nav>
 
         {/* Create sub-nav (only shown on /create/*) */}
-        {isOpen && pathname.startsWith("/create") && (
+        {isOpen && pathname.startsWith("/dashboard/create") && (
           <div className="mt-6 border-t border-ink/15 pt-4">
             <p className="mb-2 px-4 text-mono-sm text-ink/40">Workflows</p>
             <nav className="flex flex-col">

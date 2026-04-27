@@ -306,7 +306,7 @@ function DashboardContent() {
               </span>
               {jobs.length === 0 && (
                 <Link
-                  href="/create"
+                  href="/dashboard/create"
                   className="text-mono-sm tracking-[0.18em] uppercase border border-ink px-4 py-2 mt-2 hover:bg-ink hover:text-paper transition-colors"
                 >
                   Create video

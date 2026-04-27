@@ -245,7 +245,7 @@ export default function LibraryPage() {
               hint={
                 <>
                   Generate images from{" "}
-                  <Link href="/create/studio" className="text-signal hover:underline">
+                  <Link href="/dashboard/create/studio" className="text-signal hover:underline">
                     Gemini Studio
                   </Link>.
                 </>

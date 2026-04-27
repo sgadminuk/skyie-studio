@@ -83,7 +83,7 @@ export default function EditBrandPage() {
     try {
       await deleteBrandProfile(id);
       toast.success("Brand profile deleted");
-      router.push("/brand");
+      router.push("/dashboard/brand");
     } catch {
       toast.error("Failed to delete brand profile");
       setDeleting(false);
@@ -116,7 +116,7 @@ export default function EditBrandPage() {
     <div className="mx-auto w-full max-w-4xl flex flex-col gap-[clamp(24px,4vh,48px)]">
       <header className="flex flex-col gap-4">
         <Link
-          href="/brand"
+          href="/dashboard/brand"
           className="text-mono-sm text-ink/55 hover:text-ink flex items-center gap-2 transition-colors w-fit"
         >
           <ArrowLeft className="h-3.5 w-3.5" />

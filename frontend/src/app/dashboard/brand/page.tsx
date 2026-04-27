@@ -57,7 +57,7 @@ export default function BrandListPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/brand/new">
+          <Link href="/dashboard/brand/new">
             <Plus className="h-4 w-4" />
             New brand
           </Link>
@@ -78,7 +78,7 @@ export default function BrandListPage() {
             Scrape your company website or add manually — attach logos, colours, voice, and guidelines.
           </p>
           <Button asChild className="mt-2">
-            <Link href="/brand/new">
+            <Link href="/dashboard/brand/new">
               <Plus className="h-4 w-4" />
               Create profile
             </Link>
