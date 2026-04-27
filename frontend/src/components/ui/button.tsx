@@ -4,27 +4,49 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Button — Skyie-native re-skin. Same API + variants as the old shadcn
+ * button (callers don't change), but the visuals match the Skyie brand:
+ *
+ *   - sharp edges, no rounded corners, no shadows
+ *   - mono-uppercase, tight tracking
+ *   - default: ink fill, paper text, inverts on hover
+ *   - outline: ink border, transparent fill, inverts on hover
+ *   - secondary: char fill (slightly off ink), paper text
+ *   - ghost: no chrome until hover
+ *   - destructive: signal-coloured boundary, ink fill on hover
+ *   - link: signal-blue underline-on-hover
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  [
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap",
+    "text-mono-sm tracking-[0.18em] uppercase",
+    "transition-colors cursor-pointer",
+    "focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-4",
+    "disabled:pointer-events-none disabled:opacity-50",
+    "[&_svg]:pointer-events-none [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0",
+  ].join(" "),
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+          "bg-ink text-paper border border-ink hover:bg-paper hover:text-ink",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+          "bg-transparent text-destructive border border-destructive hover:bg-destructive hover:text-paper",
         outline:
-          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
+          "bg-transparent text-ink border border-ink/40 hover:border-ink hover:bg-ink hover:text-paper",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-char text-paper border border-char hover:bg-paper hover:text-ink hover:border-ink",
+        ghost:
+          "bg-transparent text-ink/65 border border-transparent hover:text-ink hover:border-ink/15",
+        link:
+          "text-signal hover:underline underline-offset-4 normal-case tracking-normal",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9",
+        default: "h-10 px-5",
+        sm: "h-8 px-3 text-[0.6875rem]",
+        lg: "h-12 px-8",
+        icon: "h-10 w-10",
       },
     },
     defaultVariants: {

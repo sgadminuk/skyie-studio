@@ -6,8 +6,12 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Label — Skyie-native. Mono-uppercase, thin tracking. Reads more like
+ * a HUD readout label than a form label, which is exactly the brief.
+ */
 const labelVariants = cva(
-  "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+  "text-mono-sm tracking-[0.16em] text-ink/55 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
 )
 
 const Label = React.forwardRef<
