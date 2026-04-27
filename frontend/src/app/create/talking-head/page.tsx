@@ -3,7 +3,6 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Mic, Loader2, Upload, X } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,7 +71,6 @@ export default function TalkingHeadPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!script.trim() || submitting) return;
-
     setSubmitting(true);
     try {
       const result = await generateTalkingHead({
@@ -92,167 +90,163 @@ export default function TalkingHeadPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-h2 text-ink">Talking Head</h1>
-        <p className="text-ink/60 mt-1">
-          Create a professional talking head video from a script
+    <div className="mx-auto w-full max-w-3xl flex flex-col gap-[clamp(24px,4vh,48px)]">
+      <header className="flex flex-col gap-2">
+        <span className="text-mono-sm text-ink/40">CREATE · TALKING HEAD</span>
+        <h1 className="text-h2 text-ink flex items-baseline gap-3">
+          <Mic className="h-5 w-5 text-signal self-center" />
+          Talking head.
+        </h1>
+        <p className="text-ink/60 max-w-[60ch]">
+          Avatar + script + voice → professional spoken-presenter video with lip-sync and background.
         </p>
-      </div>
+      </header>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         {/* Script */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Mic className="h-4 w-4" />
-              Script
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Textarea
-              placeholder="Enter the text your avatar will speak..."
-              value={script}
-              onChange={(e) => setScript(e.target.value)}
-              rows={6}
-              className="resize-none"
-            />
-            <p className="text-xs text-muted-foreground text-right">
-              {charCount} characters
-            </p>
-          </CardContent>
-        </Card>
+        <section className="border border-ink/15 px-6 py-5 flex flex-col gap-3">
+          <header className="flex items-baseline gap-3">
+            <span className="text-mono-sm text-ink/40">§01</span>
+            <h2 className="text-h3 text-ink">Script.</h2>
+          </header>
+          <Textarea
+            placeholder="Enter the text your avatar will speak…"
+            value={script}
+            onChange={(e) => setScript(e.target.value)}
+            rows={6}
+            className="resize-none"
+          />
+          <p className="text-mono-sm text-ink/45 text-right tabular-nums">
+            {charCount} characters
+          </p>
+        </section>
 
         {/* Avatar */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Avatar</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {avatarPreview ? (
-              <div className="relative inline-block">
-                <img
-                  src={avatarPreview}
-                  alt="Avatar preview"
-                  className="h-32 w-32 rounded-lg object-cover"
-                />
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute -top-2 -right-2 h-6 w-6"
-                  onClick={clearAvatar}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-                {uploadingAvatar && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50">
-                    <Loader2 className="h-5 w-5 animate-spin text-white" />
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div
-                className="flex items-center justify-center rounded-lg border-2 border-dashed p-8 cursor-pointer hover:border-muted-foreground/50 transition-colors"
-                onClick={() => fileInputRef.current?.click()}
-                onDrop={handleDrop}
-                onDragOver={(e) => e.preventDefault()}
+        <section className="border border-ink/15 px-6 py-5 flex flex-col gap-4">
+          <header className="flex items-baseline gap-3">
+            <span className="text-mono-sm text-ink/40">§02</span>
+            <h2 className="text-h3 text-ink">Avatar.</h2>
+            <span className="text-mono-sm text-ink/40">Optional</span>
+          </header>
+          {avatarPreview ? (
+            <div className="relative inline-block w-fit">
+              <img
+                src={avatarPreview}
+                alt="Avatar preview"
+                className="h-32 w-32 object-cover border border-ink/15"
+              />
+              <button
+                type="button"
+                onClick={clearAvatar}
+                aria-label="Remove avatar"
+                className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center bg-ink text-paper border border-ink hover:bg-destructive hover:border-destructive transition-colors"
               >
-                <div className="text-center">
-                  <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Drag & drop an avatar photo, or click to browse
-                  </p>
-                  <p className="text-xs text-ink/60 mt-1">
-                    PNG, JPG up to 10MB. Leave empty for default.
-                  </p>
+                <X className="h-3 w-3" />
+              </button>
+              {uploadingAvatar && (
+                <div className="absolute inset-0 flex items-center justify-center bg-ink/50">
+                  <Loader2 className="h-5 w-5 animate-spin text-paper" />
                 </div>
-              </div>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleAvatarSelect(file);
-              }}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Voice Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Voice Settings</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Voice Engine</Label>
-                <Select value={voiceEngine} onValueChange={setVoiceEngine}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fish_speech">Fish Speech</SelectItem>
-                    <SelectItem value="cosy_voice">CosyVoice</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Language</Label>
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Spanish</SelectItem>
-                    <SelectItem value="fr">French</SelectItem>
-                    <SelectItem value="de">German</SelectItem>
-                    <SelectItem value="ja">Japanese</SelectItem>
-                    <SelectItem value="zh">Chinese</SelectItem>
-                    <SelectItem value="hi">Hindi</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              onDrop={handleDrop}
+              onDragOver={(e) => e.preventDefault()}
+              className="flex items-center justify-center border border-dashed border-ink/30 p-10 hover:border-ink/60 transition-colors"
+            >
+              <div className="text-center flex flex-col items-center gap-2">
+                <Upload className="h-6 w-6 text-ink/55" />
+                <p className="text-sm text-ink/70">
+                  Drag &amp; drop an avatar photo, or click to browse
+                </p>
+                <p className="text-mono-sm text-ink/45">
+                  PNG, JPG up to 10 MB · leave empty for default
+                </p>
+              </div>
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            aria-label="Upload avatar photo"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleAvatarSelect(file);
+            }}
+          />
+        </section>
+
+        {/* Voice */}
+        <section className="border border-ink/15 px-6 py-5 flex flex-col gap-4">
+          <header className="flex items-baseline gap-3">
+            <span className="text-mono-sm text-ink/40">§03</span>
+            <h2 className="text-h3 text-ink">Voice.</h2>
+          </header>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label>Engine</Label>
+              <Select value={voiceEngine} onValueChange={setVoiceEngine}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fish_speech">Fish Speech</SelectItem>
+                  <SelectItem value="cosy_voice">CosyVoice</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>Language</Label>
+              <Select value={language} onValueChange={setLanguage}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="es">Spanish</SelectItem>
+                  <SelectItem value="fr">French</SelectItem>
+                  <SelectItem value="de">German</SelectItem>
+                  <SelectItem value="ja">Japanese</SelectItem>
+                  <SelectItem value="zh">Chinese</SelectItem>
+                  <SelectItem value="hi">Hindi</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </section>
 
         {/* Background */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Background</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="generateBg"
-                checked={generateBackground}
-                onChange={(e) => setGenerateBackground(e.target.checked)}
-                className="h-4 w-4 rounded border-border"
+        <section className="border border-ink/15 px-6 py-5 flex flex-col gap-4">
+          <header className="flex items-baseline gap-3">
+            <span className="text-mono-sm text-ink/40">§04</span>
+            <h2 className="text-h3 text-ink">Background.</h2>
+          </header>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={generateBackground}
+              onChange={(e) => setGenerateBackground(e.target.checked)}
+              className="h-4 w-4 accent-signal"
+            />
+            <span className="text-sm text-ink">Generate AI background</span>
+          </label>
+          {generateBackground && (
+            <div className="flex flex-col gap-2">
+              <Label>Prompt</Label>
+              <Input
+                value={backgroundPrompt}
+                onChange={(e) => setBackgroundPrompt(e.target.value)}
+                placeholder="Describe the background…"
               />
-              <Label htmlFor="generateBg">Generate AI background</Label>
             </div>
-            {generateBackground && (
-              <div className="space-y-2">
-                <Label>Background Prompt</Label>
-                <Input
-                  value={backgroundPrompt}
-                  onChange={(e) => setBackgroundPrompt(e.target.value)}
-                  placeholder="Describe the background..."
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          )}
+        </section>
 
-        {/* Submit */}
         <Button
           type="submit"
           size="lg"
@@ -261,13 +255,13 @@ export default function TalkingHeadPage() {
         >
           {submitting ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating...
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Generating…
             </>
           ) : (
             <>
-              <Mic className="mr-2 h-4 w-4" />
-              Generate Talking Head
+              <Mic className="h-4 w-4" />
+              Generate talking head
             </>
           )}
         </Button>
