@@ -3,13 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Video } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { DriftMark } from "@/components/skyie/DriftMark";
+import { TimeStamp } from "@/components/skyie/TimeStamp";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -28,7 +26,6 @@ export default function RegisterPage() {
       toast.error("Password must be at least 8 characters");
       return;
     }
-
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
       return;
@@ -37,7 +34,7 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       await register(email, password, name);
-      toast.success("Account created successfully!");
+      toast.success("Account created successfully");
       router.push("/");
     } catch (err: unknown) {
       const message =
@@ -50,22 +47,40 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-            <Video className="h-6 w-6 text-primary-foreground" />
+    <div className="min-h-screen flex flex-col bg-paper text-ink">
+      <header className="flex items-center justify-between px-[var(--gutter)] py-5 border-b border-ink/15">
+        <Link href="/" className="flex items-center gap-3" aria-label="Skyie Studio · home">
+          <DriftMark size={24} variant="full" speed={4} className="text-ink" />
+          <span className="text-mono-sm tracking-[0.22em]">SKYIE STUDIO</span>
+        </Link>
+        <div className="hidden sm:flex items-center gap-6 text-mono-sm text-ink/55">
+          <span>UTC</span>
+          <TimeStamp className="text-ink" />
+        </div>
+      </header>
+
+      <main className="flex-1 grid grid-cols-12 gap-x-[var(--gutter)] px-[var(--gutter)] py-[clamp(40px,8vh,96px)]">
+        <div className="col-span-12 lg:col-span-7 flex items-center justify-center mb-12 lg:mb-0">
+          <DriftMark
+            variant="full"
+            size="100%"
+            speed={5}
+            style={{ height: "clamp(160px, 32vh, 480px)", width: "auto" }}
+          />
+        </div>
+
+        <div className="col-span-12 lg:col-span-5 lg:col-start-8 flex flex-col gap-8 max-w-[26rem] lg:mt-12">
+          <div className="flex flex-col gap-3">
+            <span className="text-mono-sm text-ink/40">REGISTER · 01 / 01</span>
+            <h1 className="text-h2">Request access.</h1>
+            <p className="text-ink/70 max-w-[36ch]">
+              Create an account. The studio reviews each request manually.
+            </p>
           </div>
-          <CardTitle className="text-2xl">Create your account</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Get started with Skyie Studio
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <Field id="name" label="NAME">
+              <input
                 id="name"
                 type="text"
                 placeholder="Your name"
@@ -73,23 +88,23 @@ export default function RegisterPage() {
                 onChange={(e) => setName(e.target.value)}
                 required
                 autoComplete="name"
+                className="bg-transparent border border-ink/30 px-4 py-3 text-ink placeholder:text-ink/45 focus:outline-2 focus:outline-signal focus:outline-offset-4"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
+            </Field>
+            <Field id="email" label="EMAIL">
+              <input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder="you@studio.example"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
+                className="bg-transparent border border-ink/30 px-4 py-3 text-ink placeholder:text-ink/45 focus:outline-2 focus:outline-signal focus:outline-offset-4"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
+            </Field>
+            <Field id="password" label="PASSWORD">
+              <input
                 id="password"
                 type="password"
                 placeholder="Min 8 characters"
@@ -98,40 +113,69 @@ export default function RegisterPage() {
                 required
                 minLength={8}
                 autoComplete="new-password"
+                className="bg-transparent border border-ink/30 px-4 py-3 text-ink placeholder:text-ink/45 focus:outline-2 focus:outline-signal focus:outline-offset-4"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
+            </Field>
+            <Field id="confirmPassword" label="CONFIRM PASSWORD">
+              <input
                 id="confirmPassword"
                 type="password"
-                placeholder="Confirm your password"
+                placeholder="Repeat password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 minLength={8}
                 autoComplete="new-password"
+                className="bg-transparent border border-ink/30 px-4 py-3 text-ink placeholder:text-ink/45 focus:outline-2 focus:outline-signal focus:outline-offset-4"
               />
-            </div>
-            <Button type="submit" className="w-full" disabled={submitting}>
+            </Field>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex items-center justify-center gap-2 border border-ink bg-ink text-paper px-6 py-3 text-mono-sm tracking-[0.18em] uppercase transition-colors hover:bg-paper hover:text-ink disabled:opacity-50 cursor-pointer mt-2"
+            >
               {submitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating account
                 </>
               ) : (
-                "Create account"
+                "Request access"
               )}
-            </Button>
+            </button>
+
+            <p className="text-mono-sm text-ink/45">
+              Existing account?{" "}
+              <Link href="/login" className="text-signal hover:underline">
+                Sign in
+              </Link>
+            </p>
           </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link href="/login" className="text-primary hover:underline font-medium">
-              Sign in
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+        </div>
+      </main>
+
+      <footer className="border-t border-ink/15 px-[var(--gutter)] py-4 flex items-center justify-between text-mono-sm text-ink/45">
+        <span>© 2026 Skyie Studio</span>
+        <span>Rochester / SF</span>
+      </footer>
     </div>
+  );
+}
+
+function Field({
+  id,
+  label,
+  children,
+}: {
+  id: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label htmlFor={id} className="flex flex-col gap-2">
+      <span className="text-mono-sm text-ink/55">{label}</span>
+      {children}
+    </label>
   );
 }
