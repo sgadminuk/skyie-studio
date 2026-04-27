@@ -4,7 +4,7 @@ import {
   LatentToFrame,
   FrameToSequence,
   SequenceToOutput,
-} from "@/components/system-page/PromptToLatent";
+} from "@/components/marketing/system-page/PromptToLatent";
 
 export const metadata: Metadata = {
   title: "System",

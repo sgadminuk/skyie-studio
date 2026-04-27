@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { DriftMark } from "@/components/brand/DriftMark";
+import { DriftMark } from "@/components/skyie/DriftMark";
 import {
   manifestoFootnotes,
   manifestoLede,
   manifestoSections,
   type ManifestoNode,
-} from "@/content/manifesto";
+} from "@/content/marketing/manifesto";
 
 export const metadata: Metadata = {
   title: "Manifesto",

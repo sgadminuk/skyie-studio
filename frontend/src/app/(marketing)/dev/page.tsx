@@ -1,9 +1,9 @@
-import { DriftMark } from "@/components/brand/DriftMark";
-import { Counter } from "@/components/motion/Counter";
-import { ScrambleText } from "@/components/motion/ScrambleText";
-import { MarqueeRow } from "@/components/motion/MarqueeRow";
-import { TimeStamp } from "@/components/system/TimeStamp";
-import { FreezeMotionToggle } from "@/components/system/FreezeMotionToggle";
+import { DriftMark } from "@/components/skyie/DriftMark";
+import { Counter } from "@/components/marketing/motion/Counter";
+import { ScrambleText } from "@/components/marketing/motion/ScrambleText";
+import { MarqueeRow } from "@/components/marketing/motion/MarqueeRow";
+import { TimeStamp } from "@/components/skyie/TimeStamp";
+import { FreezeMotionToggle } from "@/components/marketing/FreezeMotionToggle";
 
 /**
  * /dev — primitives in isolation. The in-repo replacement for Storybook.

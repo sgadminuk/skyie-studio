@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DriftMark } from "@/components/brand/DriftMark";
-import { useMotionEnabled } from "@/components/system/MotionPolicyProvider";
+import { DriftMark } from "@/components/skyie/DriftMark";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
 
 /**
  * §0 Threshold — pre-load curtain (per brief §4.1).

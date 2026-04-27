@@ -1,8 +1,8 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { MotionPolicyProvider } from "./MotionPolicyProvider";
-import { DriftCursor } from "../brand/DriftCursor";
+import { MotionPolicyProvider } from "@/components/skyie/MotionPolicyProvider";
+import { DriftCursor } from "@/components/skyie/DriftCursor";
 import { SmoothScroll } from "./SmoothScroll";
 
 /**

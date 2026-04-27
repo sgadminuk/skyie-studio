@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { useMotionEnabled } from "../system/MotionPolicyProvider";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
 
 /**
  * <MarqueeRow /> — infinite horizontal scroller. Custom; no library.

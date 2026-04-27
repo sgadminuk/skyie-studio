@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { defaultDriftConfig, dotPosition } from "@/lib/drift";
+import { defaultDriftConfig, dotPosition } from "@/lib/skyie/drift";
 
 /**
  * /apple-icon · 180×180 PNG. Same composition as the favicon at a

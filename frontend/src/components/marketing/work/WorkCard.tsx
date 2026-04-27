@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { WorkItem } from "@/content/work";
-import { DriftMark } from "@/components/brand/DriftMark";
-import { useMotionEnabled } from "@/components/system/MotionPolicyProvider";
+import type { WorkItem } from "@/content/marketing/work";
+import { DriftMark } from "@/components/skyie/DriftMark";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
 
 /**
  * <WorkCard /> — a single grid cell. Loops a silent video when in view,

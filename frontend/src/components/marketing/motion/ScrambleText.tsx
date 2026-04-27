@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMotionEnabled } from "../system/MotionPolicyProvider";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
 
 /**
  * <ScrambleText /> — each character cycles through random monospace

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DriftMark } from "@/components/brand/DriftMark";
+import { DriftMark } from "@/components/skyie/DriftMark";
 
 /**
  * Site header. 24px animated mark left, route nav right. Thin row.

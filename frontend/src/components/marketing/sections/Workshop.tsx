@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
-import { workshopParameters } from "@/content/home";
+import { workshopParameters } from "@/content/marketing/home";
 
 /**
  * §5 Workshop — interactive parameter panel + Drift fragment shader.
@@ -16,7 +16,7 @@ import { workshopParameters } from "@/content/home";
 // here, but we still want to keep the canvas + rAF loop out of the
 // initial bundle until the user scrolls to this section.
 const DriftShader = dynamic(
-  () => import("@/components/shaders/DriftShader").then((m) => m.DriftShader),
+  () => import("@/components/marketing/shaders/DriftShader").then((m) => m.DriftShader),
   { ssr: false },
 );
 

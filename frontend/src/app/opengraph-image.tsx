@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { defaultDriftConfig, dotPosition } from "@/lib/drift";
+import { defaultDriftConfig, dotPosition } from "@/lib/skyie/drift";
 
 /**
  * /opengraph-image · 1200×630 PNG for social previews. Renders the

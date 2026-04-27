@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { defaultDriftConfig, dotPosition } from "@/lib/drift";
+import { defaultDriftConfig, dotPosition } from "@/lib/skyie/drift";
 
 /**
  * /icon · favicon. 32×32 PNG generated from the Drift mark at build /

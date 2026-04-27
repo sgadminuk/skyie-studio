@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { DriftMark } from "@/components/brand/DriftMark";
-import { substrateStatements } from "@/content/home";
-import { mapRange } from "@/lib/motion";
-import { useMotionEnabled } from "@/components/system/MotionPolicyProvider";
+import { DriftMark } from "@/components/skyie/DriftMark";
+import { substrateStatements } from "@/content/marketing/home";
+import { mapRange } from "@/lib/skyie/motion";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
 
 /**
  * §2 Substrate — background-only section (per brief §4.1).

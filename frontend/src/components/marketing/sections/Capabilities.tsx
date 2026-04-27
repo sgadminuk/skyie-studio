@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { capabilities, type Capability } from "@/content/home";
-import { DriftMark } from "@/components/brand/DriftMark";
-import { useMotionEnabled } from "@/components/system/MotionPolicyProvider";
+import { capabilities, type Capability } from "@/content/marketing/home";
+import { DriftMark } from "@/components/skyie/DriftMark";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
 import styles from "./Capabilities.module.css";
 
 /**

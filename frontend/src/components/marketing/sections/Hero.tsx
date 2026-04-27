@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { DriftMark } from "@/components/brand/DriftMark";
-import { TimeStamp } from "@/components/system/TimeStamp";
-import { useMotionEnabled } from "@/components/system/MotionPolicyProvider";
+import { DriftMark } from "@/components/skyie/DriftMark";
+import { TimeStamp } from "@/components/skyie/TimeStamp";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
 import {
   heroByline,
   heroLedger,
   heroPhrases,
-} from "@/content/home";
+} from "@/content/marketing/home";
 
 /**
  * §1 Hero — the make-or-break section (per brief §4.1, §10).

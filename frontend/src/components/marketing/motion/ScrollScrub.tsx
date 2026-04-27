@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { mapRange } from "@/lib/motion";
-import { useMotionEnabled } from "../system/MotionPolicyProvider";
+import { mapRange } from "@/lib/skyie/motion";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
 
 /**
  * <ScrollScrub /> — wraps a <video> and binds its currentTime to the

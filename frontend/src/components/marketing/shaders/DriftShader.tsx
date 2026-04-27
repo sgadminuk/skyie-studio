@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useMotionEnabled } from "@/components/system/MotionPolicyProvider";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
 
 /**
  * <DriftShader /> — a 2D fragment shader rendering an animated dot

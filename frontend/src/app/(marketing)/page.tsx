@@ -1,11 +1,11 @@
-import { Threshold } from "@/components/sections/Threshold";
-import { Hero } from "@/components/sections/Hero";
-import { Substrate } from "@/components/sections/Substrate";
-import { Specimen } from "@/components/sections/Specimen";
-import { Capabilities } from "@/components/sections/Capabilities";
-import { Workshop } from "@/components/sections/Workshop";
-import { Numbers } from "@/components/sections/Numbers";
-import { AccessSection } from "@/components/sections/AccessSection";
+import { Threshold } from "@/components/marketing/sections/Threshold";
+import { Hero } from "@/components/marketing/sections/Hero";
+import { Substrate } from "@/components/marketing/sections/Substrate";
+import { Specimen } from "@/components/marketing/sections/Specimen";
+import { Capabilities } from "@/components/marketing/sections/Capabilities";
+import { Workshop } from "@/components/marketing/sections/Workshop";
+import { Numbers } from "@/components/marketing/sections/Numbers";
+import { AccessSection } from "@/components/marketing/sections/AccessSection";
 
 /**
  * Home · all eight sections, composed in the order brief §4.1 requires.

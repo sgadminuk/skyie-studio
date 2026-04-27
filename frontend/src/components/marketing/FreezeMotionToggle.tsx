@@ -1,6 +1,6 @@
 "use client";
 
-import { useMotionPolicy } from "./MotionPolicyProvider";
+import { useMotionPolicy } from "@/components/skyie/MotionPolicyProvider";
 
 /**
  * Footer-mounted toggle (per brief §8). Persists via localStorage,

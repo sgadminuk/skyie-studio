@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, useTransition } from "react";
-import { requestAccess, type RequestAccessResult } from "@/app/access/actions";
+import { requestAccess, type RequestAccessResult } from "@/app/(marketing)/access/actions";
 
 /**
  * <AccessForm /> — single email input + single button. On submit, the

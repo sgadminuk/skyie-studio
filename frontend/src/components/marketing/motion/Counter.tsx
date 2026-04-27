@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMotionEnabled } from "../system/MotionPolicyProvider";
-import { smoothstep } from "@/lib/motion";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
+import { smoothstep } from "@/lib/skyie/motion";
 
 /**
  * <Counter /> — a number that ticks up from 0 to `value` when scrolled

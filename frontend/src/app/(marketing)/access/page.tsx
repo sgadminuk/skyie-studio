@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { DriftMark } from "@/components/brand/DriftMark";
-import { AccessForm } from "@/components/access/AccessForm";
-import { accessLede, accessPlans, type AccessPlan } from "@/content/access";
+import { DriftMark } from "@/components/skyie/DriftMark";
+import { AccessForm } from "@/components/marketing/access/AccessForm";
+import { accessLede, accessPlans, type AccessPlan } from "@/content/marketing/access";
 
 export const metadata: Metadata = {
   title: "Access",

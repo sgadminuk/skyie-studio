@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Lenis from "lenis";
-import { useMotionEnabled } from "./MotionPolicyProvider";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
 
 /**
  * Lenis smooth-scroll wrapper. Per brief §6.4: lerp 0.08, no smoother.

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { WorkItem } from "@/content/work";
-import { DriftMark } from "@/components/brand/DriftMark";
+import type { WorkItem } from "@/content/marketing/work";
+import { DriftMark } from "@/components/skyie/DriftMark";
 
 /**
  * <WorkDrawer /> — side drawer (not a modal). Opens with a View

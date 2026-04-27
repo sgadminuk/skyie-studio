@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { specimenClips } from "@/content/home";
-import { mapRange } from "@/lib/motion";
-import { DriftMark } from "@/components/brand/DriftMark";
-import { useMotionEnabled } from "@/components/system/MotionPolicyProvider";
+import { specimenClips } from "@/content/marketing/home";
+import { mapRange } from "@/lib/skyie/motion";
+import { DriftMark } from "@/components/skyie/DriftMark";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
 
 /**
  * §3 Specimen — scroll-scrub videos (per brief §4.1).

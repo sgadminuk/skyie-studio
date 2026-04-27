@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { DriftMark } from "@/components/brand/DriftMark";
+import { DriftMark } from "@/components/skyie/DriftMark";
 import { FreezeMotionToggle } from "./FreezeMotionToggle";
-import { TimeStamp } from "./TimeStamp";
+import { TimeStamp } from "@/components/skyie/TimeStamp";
 
 /**
  * Site footer. Per brief §3.1, the mark is full-width and the dots

@@ -1,5 +1,5 @@
-import { AccessForm } from "@/components/access/AccessForm";
-import { homeAccessLede } from "@/content/home";
+import { AccessForm } from "@/components/marketing/access/AccessForm";
+import { homeAccessLede } from "@/content/marketing/home";
 
 /**
  * §7 Access — the home CTA (per brief §4.1, §7).

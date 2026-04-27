@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { lerp } from "@/lib/motion";
-import { usePointerRef } from "@/lib/hooks/usePointer";
-import { useMotionEnabled } from "../system/MotionPolicyProvider";
+import { lerp } from "@/lib/skyie/motion";
+import { usePointerRef } from "@/lib/skyie/hooks/usePointer";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
 
 /**
  * <DriftCursor /> — the custom cursor.

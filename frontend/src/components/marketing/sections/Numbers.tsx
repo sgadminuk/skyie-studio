@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Counter } from "@/components/motion/Counter";
-import { numbersMetrics } from "@/content/home";
-import { useMotionEnabled } from "@/components/system/MotionPolicyProvider";
+import { Counter } from "@/components/marketing/motion/Counter";
+import { numbersMetrics } from "@/content/marketing/home";
+import { useMotionEnabled } from "@/components/skyie/MotionPolicyProvider";
 
 /**
  * §6 Numbers — pure typography section (per brief §4.1).

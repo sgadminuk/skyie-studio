@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { WorkCard } from "@/components/work/WorkCard";
-import { WorkDrawer } from "@/components/work/WorkDrawer";
-import { workItems, type WorkItem } from "@/content/work";
+import { WorkCard } from "@/components/marketing/work/WorkCard";
+import { WorkDrawer } from "@/components/marketing/work/WorkDrawer";
+import { workItems, type WorkItem } from "@/content/marketing/work";
 
 /**
  * /work — gallery (per brief §4.3).
