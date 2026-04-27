@@ -10,7 +10,7 @@ import { DriftMark } from "@/components/brand/DriftMark";
 export function Header() {
   return (
     <header
-      className="sticky top-0 z-40 border-b border-ink/10 bg-paper/95 backdrop-blur-[2px] supports-[backdrop-filter]:bg-paper/80"
+      className="sticky top-0 z-40 border-b border-ink/10 bg-paper"
       role="banner"
     >
       <div className="px-[var(--gutter)] py-3 flex items-center justify-between gap-6">

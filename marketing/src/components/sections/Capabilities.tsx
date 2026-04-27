@@ -98,7 +98,7 @@ export function Capabilities() {
                 e.stopPropagation();
                 expandSticky(c.id);
               }}
-              aria-expanded={expandedId === c.id}
+              aria-expanded={expandedId === c.id ? "true" : "false"}
               aria-label={`${c.title}: ${c.blurb}`}
               data-cursor="ring"
             >
@@ -175,23 +175,31 @@ function CapabilityDemo({ demo }: { demo: Capability["demo"] }) {
     );
   }
   if (demo === "noise") {
+    // Procedural dot field via SVG <pattern> — no CSS gradients.
     return (
-      <div
-        className="w-32 h-20 bg-ink/10"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 25% 25%, var(--ink) 1px, transparent 1.5px), radial-gradient(circle at 75% 75%, var(--ink) 1px, transparent 1.5px)",
-          backgroundSize: "8px 8px, 6px 6px",
-          animation: "noise-shift 3s linear infinite",
-        }}
+      <svg
+        viewBox="0 0 128 80"
+        className="w-32 h-20 text-ink"
+        aria-hidden
+        style={{ animation: "noise-pan 3s linear infinite" }}
       >
+        <defs>
+          <pattern id="noise-cap-a" width="8" height="8" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="2" r="0.9" fill="currentColor" />
+          </pattern>
+          <pattern id="noise-cap-b" width="6" height="6" patternUnits="userSpaceOnUse">
+            <circle cx="4.5" cy="4.5" r="0.7" fill="currentColor" opacity="0.7" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#noise-cap-a)" />
+        <rect width="100%" height="100%" fill="url(#noise-cap-b)" />
         <style>{`
-          @keyframes noise-shift {
-            0% { background-position: 0 0, 0 0; }
-            100% { background-position: 8px 6px, -6px 8px; }
+          @keyframes noise-pan {
+            0%   { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-8px, 6px, 0); }
           }
         `}</style>
-      </div>
+      </svg>
     );
   }
   if (demo === "type") {

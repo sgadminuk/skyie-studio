@@ -93,7 +93,7 @@ export function AccessForm({
           "text-[clamp(1rem,0.5vw+0.85rem,1.25rem)] tabular-nums",
           succeeded ? "text-mono-sm uppercase tracking-[0.2em]" : "",
           succeeded ? "text-signal" : "text-ink",
-          "placeholder:text-ink/35 focus:outline-2 focus:outline-signal focus:outline-offset-4",
+          "placeholder:text-ink/55 placeholder:not-italic focus:outline-2 focus:outline-signal focus:outline-offset-4",
           "transition-colors",
         ].join(" ")}
       />

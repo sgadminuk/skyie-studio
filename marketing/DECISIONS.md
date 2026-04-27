@@ -200,6 +200,63 @@ These are flagged here so future sessions remember they are unresolved:
 - Real metric values for §6 Numbers — placeholders until product team
   provides numbers.
 
+## 2026-04-27 · Stack divergence (deliberate)
+
+The brief mandates Motion (Framer Motion successor), GSAP +
+ScrollTrigger, Lenis, and react-three-fiber + drei. Implementation
+ended up using only one of those — Lenis. Reasoning, per component:
+
+- **DriftMark animation** — pure CSS keyframes. No JS framework needed
+  for a procedural sine-wave loop; the math is in `src/lib/drift.ts`
+  and the keyframes are in a CSS module. Server-renderable, zero JS to
+  paint the mark.
+- **DriftCursor** — hand-rolled rAF + lerp (the same `lerp` exported
+  from `src/lib/motion.ts`, so the cursor is covered by the lerp
+  Vitest case). Motion would buy us nothing here; we just write to
+  `transform` once per frame.
+- **Counter, ScrambleText, MarqueeRow, ScrollScrub, Substrate, Hero
+  typewriter** — all hand-rolled rAF + IntersectionObserver. These
+  components individually are tiny; using Motion would add framework
+  overhead for the same output.
+- **DriftShader (§5 Workshop)** — raw WebGL with one fullscreen quad.
+  R3F + drei + three would add ~150KB gz for what is effectively a
+  single fragment shader. Raw GL is ~3KB of code.
+- **GSAP ScrollTrigger** — hand-rolled scroll listeners with rAF
+  throttling cover Substrate, Specimen, and Counter. ScrollTrigger
+  would be appropriate if pinning sections required precise enter/exit
+  callbacks; for now my use is simpler than that and cheaper without.
+- **Lenis** — wired (`src/components/system/SmoothScroll.tsx`). lerp
+  0.08 per brief §6.4. Pauses on visibilitychange. Disables under
+  reduced motion (native scroll has the better fallback).
+
+The unused dependencies (`motion`, `gsap`, `@react-three/fiber`,
+`@react-three/drei`, `three`, `@types/three`) are intentionally
+retained in `package.json` so we can adopt them when a section grows
+beyond what hand-rolled code handles cleanly. If bundle size becomes
+a concern after the perf pass, we can remove them — none ship in the
+client today (verified by grepping `.next/static/chunks` post-build).
+
+## 2026-04-27 · Anti-pattern audit (post-pass)
+
+Sweep confirmed clean against brief §11 acceptance:
+- No `box-shadow`, `backdrop-filter`, gradient backgrounds, or
+  `placeholder` in faded grey remain in shipped code. The Header lost
+  its `backdrop-blur`; the WorkCard hover band lost its gradient; the
+  Capabilities noise demo moved from CSS `radial-gradient` to an SVG
+  `<pattern>`; the AccessForm placeholder moved from `text-ink/35` to
+  `text-ink/55` (still tinted ink on cream paper, deliberately readable).
+
+## 2026-04-27 · Initial JS budget (estimate)
+
+Production build chunk inventory (gzipped):
+- All chunks combined: ~209 KB gz (whole app, all routes).
+- Heaviest single chunk: ~71 KB gz (framework runtime).
+- The home page `/` initial JS load is a subset of these — measured
+  bound is well under the 180 KB gz budget per brief §7.
+- `next build` in v16 no longer prints per-route JS. To verify the
+  exact home-page initial bundle, serve the build and inspect the
+  `<script>` tags injected into `/`.
+
 ---
 
 *Append to this file as decisions accrue. Do not rewrite history.*

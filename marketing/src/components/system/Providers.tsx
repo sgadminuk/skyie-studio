@@ -3,6 +3,7 @@
 import { type ReactNode } from "react";
 import { MotionPolicyProvider } from "./MotionPolicyProvider";
 import { DriftCursor } from "../brand/DriftCursor";
+import { SmoothScroll } from "./SmoothScroll";
 
 /**
  * Client provider tree. Mounts at the root layout boundary so every
@@ -15,6 +16,7 @@ import { DriftCursor } from "../brand/DriftCursor";
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <MotionPolicyProvider>
+      <SmoothScroll />
       {children}
       <DriftCursor />
     </MotionPolicyProvider>

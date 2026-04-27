@@ -90,7 +90,7 @@ export function WorkCard({
       >
         {item.ref}
       </span>
-      <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-ink/85 to-transparent text-paper opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity">
+      <div className="absolute bottom-0 inset-x-0 p-4 bg-ink text-paper opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity">
         <span className="text-mono-sm tracking-[0.16em] uppercase">
           {item.title}
         </span>
