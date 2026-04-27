@@ -1,0 +1,175 @@
+@import "tailwindcss";
+
+/* -----------------------------------------------------------------------
+ * Skyie Studio · base layer
+ *
+ * Tokens, fluid type scale, grid, base resets. No component styles here.
+ * Component-specific CSS lives in CSS modules or Tailwind utility classes.
+ * -------------------------------------------------------------------- */
+
+@layer theme {
+  :root {
+    /* palette · four colours, no tints (per brief §3.2) */
+    --ink: #0A0A0A;
+    --paper: #F4F2EC;
+    --signal: #1010FF;
+    --char: #1A1A1A;
+
+    /* fluid type scale · clamp() everywhere (per brief §3.4) */
+    --t-display:   clamp(4rem,    12vw + 1rem,   15rem);
+    --t-h1:        clamp(2.5rem,   5vw + 1rem,    6rem);
+    --t-h2:        clamp(1.75rem,  2.5vw + 1rem,  3rem);
+    --t-h3:        clamp(1.25rem,  1.2vw + 1rem,  1.75rem);
+    --t-body:      clamp(0.9375rem, 0.3vw + 0.85rem, 1.0625rem);
+    --t-caption:   clamp(0.6875rem, 0.1vw + 0.65rem, 0.75rem);
+    --t-mono-sm:   clamp(0.625rem,  0.1vw + 0.6rem,  0.75rem);
+
+    /* fluid grid · gutters scale, columns derive */
+    --gutter: clamp(16px, 2vw, 32px);
+    --col: calc((100vw - 13 * var(--gutter)) / 12);
+
+    /* motion durations / easings (per brief §6) */
+    --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.83, 0, 0.17, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-drift:  cubic-bezier(0.45, 0, 0.55, 1);
+
+    --dur-instant: 120ms;
+    --dur-quick:    320ms;
+    --dur-base:     560ms;
+    --dur-long:     960ms;
+    --dur-epic:    1600ms;
+
+    color-scheme: light;
+  }
+
+  [data-theme="dark"] {
+    --ink: #F4F2EC;
+    --paper: #0A0A0A;
+    --signal: #4D4DFF;
+    --char: #161616;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  /* expose tokens to Tailwind v4's utility generator */
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-signal: var(--signal);
+  --color-char: var(--char);
+
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  /* tracking + leading defaults that match heading rules in §3.4 */
+  --tracking-display: -0.04em;
+  --leading-display: 0.92;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-weight: 380;             /* per brief §3.3 — not the default 400 */
+    font-size: var(--t-body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Headings: tightness is the weight signal (per §3.4) */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 380;
+    letter-spacing: var(--tracking-display);
+    line-height: var(--leading-display);
+    margin: 0;
+  }
+
+  /* Focus rings: 2px signal, 4px offset, never removed (per brief §8) */
+  :where(a, button, [role="button"], input, textarea, select, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+
+  /* Reduced motion fallback baseline (per brief §6.5) */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Below-the-fold sections opt in to content-visibility (per §7) */
+  [data-cv="auto"] {
+    content-visibility: auto;
+    contain-intrinsic-size: 100vh 1200px;
+  }
+
+  /* Hide cursor on touch devices regardless of state */
+  @media (hover: none), (pointer: coarse) {
+    [data-cursor-target] {
+      cursor: auto;
+    }
+  }
+}
+
+/* -----------------------------------------------------------------------
+ * Utility primitives that don't fit Tailwind's atomic model.
+ * Keep these tiny; component-specific CSS lives elsewhere.
+ * -------------------------------------------------------------------- */
+
+@utility text-display {
+  font-size: var(--t-display);
+  font-weight: 380;
+  letter-spacing: -0.04em;
+  line-height: 0.88;
+}
+@utility text-h1 {
+  font-size: var(--t-h1);
+  font-weight: 380;
+  letter-spacing: -0.04em;
+  line-height: 0.92;
+}
+@utility text-h2 {
+  font-size: var(--t-h2);
+  font-weight: 380;
+  letter-spacing: -0.03em;
+  line-height: 0.96;
+}
+@utility text-h3 {
+  font-size: var(--t-h3);
+  font-weight: 380;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+@utility text-mono-sm {
+  font-family: var(--font-mono);
+  font-size: var(--t-mono-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+@utility text-caption {
+  font-family: var(--font-mono);
+  font-size: var(--t-caption);
+  letter-spacing: 0.04em;
+}
