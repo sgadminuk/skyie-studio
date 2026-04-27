@@ -107,7 +107,13 @@
     border-radius: 2px;
   }
 
-  /* Reduced motion fallback baseline (per brief §6.5) */
+  /* Reduced motion fallback baseline (per brief §6.5).
+     Two triggers:
+       1. system prefers-reduced-motion media query
+       2. <html data-motion="frozen"> set by MotionPolicyProvider when
+          the user toggles freeze or hits the page with ?reduce-motion=1
+     Both stop CSS animations instantly. JS-driven motion is suspended
+     by the React side via useMotionEnabled(). */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -117,6 +123,15 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+
+  [data-motion="frozen"] *,
+  [data-motion="frozen"] *::before,
+  [data-motion="frozen"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 
   /* Below-the-fold sections opt in to content-visibility (per §7) */

@@ -46,7 +46,9 @@ export default function WorkPage() {
     >
       <header className="flex flex-col gap-4">
         <span className="text-mono-sm text-ink/50">Work · 2026</span>
-        <h1 className="text-display max-w-[14ch]">Output, indexed.</h1>
+        <h1 className="text-h1 max-w-[16ch]" style={{ textWrap: "balance" }}>
+          Output, indexed.
+        </h1>
         <p className="text-h3 text-ink/80 max-w-[62ch]">
           Selected renders, with their metadata. Each clip is the artefact
           of a prompt, a seed, a model, and a render time. Click any cell
@@ -57,7 +59,12 @@ export default function WorkPage() {
       <section
         aria-label="Renders"
         className="grid grid-cols-2 lg:grid-cols-3 gap-4"
-        style={{ gridAutoFlow: "dense" }}
+        style={{
+          gridAutoFlow: "dense",
+          // Fixed row height so 9:16 / 21:9 / 1:1 cards don't blow the grid
+          // up vertically. row-span-2 cards get 2× this height + gap.
+          gridAutoRows: "clamp(180px, 22vw, 280px)",
+        }}
       >
         {workItems.map((item) => (
           <WorkCard key={item.id} item={item} onSelect={open} />

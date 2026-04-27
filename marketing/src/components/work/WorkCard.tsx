@@ -1,13 +1,20 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { WorkItem } from "@/content/work";
+import { DriftMark } from "@/components/brand/DriftMark";
 import { useMotionEnabled } from "@/components/system/MotionPolicyProvider";
 
 /**
  * <WorkCard /> — a single grid cell. Loops a silent video when in view,
- * pauses out of view. Click invokes onSelect (the page handles the
- * View Transition into the drawer).
+ * pauses out of view. Falls back to a procedural Drift placeholder when
+ * the source video isn't shipped (404). Click invokes onSelect (the
+ * page handles the View Transition into the drawer).
+ *
+ * The card height is driven by the explicit grid-auto-rows on the parent
+ * grid (a fixed pixel height), not by the video's intrinsic aspect.
+ * Each card simply fills its grid cell. This keeps the gallery compact
+ * even when items have wildly different content aspects (9:16, 21:9, 1:1).
  */
 
 export function WorkCard({
@@ -20,13 +27,14 @@ export function WorkCard({
   const motionEnabled = useMotionEnabled();
   const wrapRef = useRef<HTMLButtonElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [ready, setReady] = useState(false);
 
-  // Play/pause based on intersection — never both autoplay all 7 at once.
+  // Play/pause based on intersection — never autoplay all 7 at once.
   useEffect(() => {
     const video = videoRef.current;
     const wrap = wrapRef.current;
     if (!video || !wrap) return;
-    if (!motionEnabled) {
+    if (!motionEnabled || !ready) {
       video.pause();
       return;
     }
@@ -44,9 +52,8 @@ export function WorkCard({
     );
     ob.observe(wrap);
     return () => ob.disconnect();
-  }, [motionEnabled]);
+  }, [motionEnabled, ready]);
 
-  const aspectClass = aspectToClass(item.aspect);
   const colSpan =
     item.span === 3
       ? "col-span-2 lg:col-span-3"
@@ -68,48 +75,45 @@ export function WorkCard({
       ].join(" ")}
       aria-label={`${item.title}. Open details.`}
       data-cursor="ring"
-      // Per-element view-transition name so the framework
-      // animates the card into the drawer thumbnail.
+      // Per-element view-transition name pairs this card with its
+      // drawer hero on open / close.
       style={{ viewTransitionName: `work-${item.id}` }}
     >
-      <div className={`relative w-full ${aspectClass}`}>
-        <video
-          ref={videoRef}
-          src={item.src}
-          poster={item.poster}
-          preload="metadata"
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-          aria-hidden
+      {/* Procedural placeholder · always rendered; video covers it on load. */}
+      <div className="absolute inset-0 flex items-center justify-center text-ink/80 pointer-events-none">
+        <DriftMark
+          size="50%"
+          speed={4 + (item.id.length % 4)}
+          style={{ height: "60%", width: "auto" }}
         />
       </div>
-      <span
-        className="absolute top-3 left-3 text-mono-sm text-paper bg-ink/85 px-2 py-1"
-      >
+
+      <video
+        ref={videoRef}
+        src={item.src}
+        poster={item.poster}
+        preload="metadata"
+        muted
+        loop
+        playsInline
+        onLoadedData={() => setReady(true)}
+        onError={() => setReady(false)}
+        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+        style={{ opacity: ready ? 1 : 0 }}
+        aria-hidden
+      />
+
+      <span className="absolute top-3 left-3 text-mono-sm text-paper bg-ink px-2 py-1 z-10">
         {item.ref}
       </span>
-      <div className="absolute bottom-0 inset-x-0 p-4 bg-ink text-paper opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity">
-        <span className="text-mono-sm tracking-[0.16em] uppercase">
+      <div className="absolute bottom-0 inset-x-0 p-4 bg-ink text-paper opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity z-10">
+        <span className="text-mono-sm tracking-[0.16em] uppercase block">
           {item.title}
+        </span>
+        <span className="text-mono-sm text-paper/60 mt-1 block">
+          {item.aspect} · {item.blurb}
         </span>
       </div>
     </button>
   );
-}
-
-function aspectToClass(a: WorkItem["aspect"]): string {
-  switch (a) {
-    case "16:9":
-      return "aspect-[16/9]";
-    case "4:3":
-      return "aspect-[4/3]";
-    case "1:1":
-      return "aspect-square";
-    case "9:16":
-      return "aspect-[9/16]";
-    case "21:9":
-      return "aspect-[21/9]";
-  }
 }

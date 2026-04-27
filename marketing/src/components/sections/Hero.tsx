@@ -126,13 +126,15 @@ export function Hero() {
         ))}
       </aside>
 
-      {/* Phrase + sub-line, columns 1–9 */}
-      <div className="col-span-12 lg:col-span-9 flex flex-col gap-6 mt-8">
+      {/* Phrase + sub-line, full width — the "massive" phrase needs the
+          whole row to stay on a single line at lg+ viewports. */}
+      <div className="col-span-12 flex flex-col gap-6 mt-8">
         <h1
           id="hero-heading"
           className="text-display text-ink"
           aria-live="polite"
           aria-atomic
+          style={{ textWrap: "balance" }}
         >
           <span className="inline-block min-h-[1em]">
             {text}

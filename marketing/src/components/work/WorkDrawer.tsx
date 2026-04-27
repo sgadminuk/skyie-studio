@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { WorkItem } from "@/content/work";
+import { DriftMark } from "@/components/brand/DriftMark";
 
 /**
  * <WorkDrawer /> — side drawer (not a modal). Opens with a View
@@ -20,6 +21,12 @@ export function WorkDrawer({
   onClose: () => void;
 }) {
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const [videoReady, setVideoReady] = useState(false);
+
+  // Reset readiness when the active item changes.
+  useEffect(() => {
+    setVideoReady(false);
+  }, [item?.id]);
 
   // Focus management + Escape key
   useEffect(() => {
@@ -79,15 +86,29 @@ export function WorkDrawer({
         </header>
 
         <div
-          className="bg-char/5 overflow-hidden"
+          className="relative bg-char/5 overflow-hidden aspect-video"
           style={{ viewTransitionName: `work-${item.id}` }}
         >
+          {/* Procedural placeholder · always rendered behind the video. */}
+          <div
+            aria-hidden
+            className="absolute inset-0 flex items-center justify-center text-ink/80 pointer-events-none"
+          >
+            <DriftMark size="40%" speed={5} style={{ height: "60%", width: "auto" }} />
+            <span className="absolute bottom-3 left-3 text-mono-sm text-ink/45">
+              {item.ref} · awaiting source
+            </span>
+          </div>
+
           <video
             src={item.src}
             poster={item.poster}
             controls
             preload="metadata"
-            className="block w-full h-auto"
+            onLoadedData={() => setVideoReady(true)}
+            onError={() => setVideoReady(false)}
+            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+            style={{ opacity: videoReady ? 1 : 0 }}
             aria-label={`${item.title}, full clip`}
           />
         </div>

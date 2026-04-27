@@ -24,7 +24,9 @@ export default function AccessPage() {
     >
       <header className="mx-auto w-full max-w-[78rem] flex flex-col gap-6">
         <span className="text-mono-sm text-ink/50">Access · 2026</span>
-        <h1 className="text-display max-w-[12ch]">Three configurations.</h1>
+        <h1 className="text-h1 max-w-[20ch]" style={{ textWrap: "balance" }}>
+          Three configurations.
+        </h1>
         <p className="text-h3 text-ink/80 leading-snug max-w-[62ch]">{accessLede}</p>
       </header>
 

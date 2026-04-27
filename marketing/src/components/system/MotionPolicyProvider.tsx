@@ -123,6 +123,18 @@ export function MotionPolicyProvider({ children }: { children: ReactNode }) {
     return { motionEnabled, reason, ready, freeze, unfreeze };
   }, [userToggle, urlReduce, systemReduce, ready, freeze, unfreeze]);
 
+  // Mirror motionEnabled onto <html data-motion="..."> so pure-CSS
+  // animations (Drift loop, wave bars, weight pulse, etc.) can freeze
+  // even when the trigger is a JS-side override (URL param / footer
+  // toggle). The system prefers-reduced-motion media query already
+  // handles the OS-pref case via globals.css.
+  useEffect(() => {
+    if (!ready) return;
+    document.documentElement.dataset.motion = value.motionEnabled
+      ? "on"
+      : "frozen";
+  }, [ready, value.motionEnabled]);
+
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

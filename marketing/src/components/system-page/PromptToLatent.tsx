@@ -26,9 +26,12 @@ export function PromptToLatent() {
       for (let x = 0; x < W; x++) {
         // Each cell mixes the prompt seed with its coords and a couple of
         // sine harmonics. Output 0..1.
+        // Round to 3 decimals so server / client renders agree exactly —
+        // Chrome normalises rgba() opacity to 2-3 decimals at parse time
+        // and the difference triggers a React hydration mismatch.
         const phase = (x * 0.31 + y * 0.47 + seed * 0.0003) * Math.PI;
         const v = 0.5 + 0.5 * Math.sin(phase) * Math.cos(phase * 1.7 + seed * 0.0007);
-        arr[y * W + x] = v;
+        arr[y * W + x] = Math.round(v * 1000) / 1000;
       }
     }
     return { arr, W, H };
@@ -41,6 +44,8 @@ export function PromptToLatent() {
       summary="A prompt is not a string. It's a stable position in a learned space. Type to move the position; observe the latent shift."
     >
       <textarea
+        id="p2l-prompt"
+        name="prompt"
         rows={3}
         value={prompt}
         onChange={(e) => setPrompt(e.currentTarget.value)}
@@ -294,6 +299,7 @@ export function SequenceToOutput() {
             value={fps}
             onChange={(e) => setFps(Number(e.currentTarget.value))}
             className="accent-signal cursor-pointer w-full"
+            aria-label="Frame rate"
             data-cursor="ring"
           />
           <span className="text-mono-sm text-ink/55 tabular-nums">{fps} fps</span>

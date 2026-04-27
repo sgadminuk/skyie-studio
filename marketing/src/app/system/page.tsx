@@ -27,7 +27,9 @@ export default function SystemPage() {
     >
       <header className="mx-auto w-full max-w-[78rem] flex flex-col gap-4 mb-16">
         <span className="text-mono-sm text-ink/50">System · 2026</span>
-        <h1 className="text-display max-w-[12ch]">How it works.</h1>
+        <h1 className="text-h1 max-w-[14ch]" style={{ textWrap: "balance" }}>
+          How it works.
+        </h1>
         <p className="text-h3 text-ink/80 max-w-[62ch]">
           Four working panels. Manipulate each one. Each panel resolves
           one step of the pipeline from a written prompt to a published

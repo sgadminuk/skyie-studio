@@ -66,10 +66,40 @@
   }
 }
 
+/* -----------------------------------------------------------------------
+ * Reduced-motion fallback. Two triggers:
+ *   1. system prefers-reduced-motion media query
+ *   2. <html data-motion="frozen"> (footer toggle / ?reduce-motion=1)
+ *
+ * Animation stops, but the mark freezes at the static S-curve — not at
+ * a flat row of dots. Per-column translateY mirrors the static
+ * skyie-mark.svg cy values, parametrised by --drift-amplitude.
+ *
+ * Sin values: 0, +0.7071, +1, +0.7071, 0, -0.7071, -1, -0.7071, 0
+ * (the col 0..8 sine series with period 8). The signs match the
+ * static SVG: positive = displaced down, negative = displaced up.
+ * -------------------------------------------------------------------- */
+
 @media (prefers-reduced-motion: reduce) {
-  .colAnimated {
-    animation: none;
-    /* freeze at a tasteful frame — the static S-curve, achieved by
-       applying the t=0 offset via the data attribute mirror */
-  }
+  .colAnimated { animation: none; }
+  .colAnimated:nth-child(1) { transform: translateY(0); }
+  .colAnimated:nth-child(2) { transform: translateY(calc(var(--drift-amplitude) * 0.7071)); }
+  .colAnimated:nth-child(3) { transform: translateY(calc(var(--drift-amplitude) * 1)); }
+  .colAnimated:nth-child(4) { transform: translateY(calc(var(--drift-amplitude) * 0.7071)); }
+  .colAnimated:nth-child(5) { transform: translateY(0); }
+  .colAnimated:nth-child(6) { transform: translateY(calc(var(--drift-amplitude) * -0.7071)); }
+  .colAnimated:nth-child(7) { transform: translateY(calc(var(--drift-amplitude) * -1)); }
+  .colAnimated:nth-child(8) { transform: translateY(calc(var(--drift-amplitude) * -0.7071)); }
+  .colAnimated:nth-child(9) { transform: translateY(0); }
 }
+
+[data-motion="frozen"] .colAnimated { animation: none; }
+[data-motion="frozen"] .colAnimated:nth-child(1) { transform: translateY(0); }
+[data-motion="frozen"] .colAnimated:nth-child(2) { transform: translateY(calc(var(--drift-amplitude) * 0.7071)); }
+[data-motion="frozen"] .colAnimated:nth-child(3) { transform: translateY(calc(var(--drift-amplitude) * 1)); }
+[data-motion="frozen"] .colAnimated:nth-child(4) { transform: translateY(calc(var(--drift-amplitude) * 0.7071)); }
+[data-motion="frozen"] .colAnimated:nth-child(5) { transform: translateY(0); }
+[data-motion="frozen"] .colAnimated:nth-child(6) { transform: translateY(calc(var(--drift-amplitude) * -0.7071)); }
+[data-motion="frozen"] .colAnimated:nth-child(7) { transform: translateY(calc(var(--drift-amplitude) * -1)); }
+[data-motion="frozen"] .colAnimated:nth-child(8) { transform: translateY(calc(var(--drift-amplitude) * -0.7071)); }
+[data-motion="frozen"] .colAnimated:nth-child(9) { transform: translateY(0); }

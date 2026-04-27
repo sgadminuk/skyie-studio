@@ -30,7 +30,9 @@ export default function ManifestoPage() {
       <article className="mx-auto flex max-w-[78rem] flex-col gap-[clamp(48px,7vh,112px)]">
         <header className="mx-auto w-full max-w-[62ch] flex flex-col gap-6">
           <span className="text-mono-sm text-ink/50">Manifesto · 2026</span>
-          <h1 className="text-display">A workshop for synthesizing motion.</h1>
+          <h1 className="text-h1" style={{ textWrap: "balance" }}>
+            A workshop for synthesizing motion.
+          </h1>
           <p className="text-h3 text-ink/80 leading-snug">{manifestoLede}</p>
         </header>
 
