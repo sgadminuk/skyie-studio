@@ -118,7 +118,7 @@ export default function LibraryPage() {
           <Skeleton className="h-4 w-80 mt-1" />
         </div>
         <Skeleton className="h-10 w-80" />
-        <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
+        <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
           <Skeleton className="h-48" />
           <Skeleton className="h-48" />
           <Skeleton className="h-48" />
@@ -171,7 +171,7 @@ export default function LibraryPage() {
               hint="Generated videos will appear here."
             />
           ) : (
-            <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
+            <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
               {videos.map((video) => {
                 const videoUrl = video.url.startsWith("http")
                   ? video.url
@@ -179,7 +179,7 @@ export default function LibraryPage() {
                 const isPlaying = playingVideo === video.filename;
                 return (
                   <article key={video.filename} className="bg-paper overflow-hidden">
-                    <div className="aspect-video bg-ink/[0.06] relative">
+                    <div className="aspect-video bg-ink/6 relative">
                       {isPlaying ? (
                         <video
                           src={videoUrl}
@@ -194,7 +194,7 @@ export default function LibraryPage() {
                         <button
                           type="button"
                           aria-label={`Play ${video.filename}`}
-                          className="w-full h-full flex items-center justify-center bg-ink/[0.04] hover:bg-ink/[0.08] transition-colors"
+                          className="w-full h-full flex items-center justify-center bg-ink/4 hover:bg-ink/8 transition-colors"
                           onClick={() => setPlayingVideo(video.filename)}
                         >
                           <Play className="h-8 w-8 text-ink/55" />
@@ -252,7 +252,7 @@ export default function LibraryPage() {
               }
             />
           ) : (
-            <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 bg-ink/15">
+            <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 bg-ink/15">
               {images.map((img) => {
                 const imgUrl = img.url.startsWith("http")
                   ? img.url
@@ -260,7 +260,7 @@ export default function LibraryPage() {
                 return (
                   <article key={img.path} className="bg-paper overflow-hidden group">
                     <Link href={img.job_id ? `/jobs/${img.job_id}` : "#"}>
-                      <div className="aspect-square bg-ink/[0.06] overflow-hidden">
+                      <div className="aspect-square bg-ink/6 overflow-hidden">
                         <img
                           src={imgUrl}
                           alt={img.filename}
@@ -330,14 +330,14 @@ export default function LibraryPage() {
               hint="Upload avatar photos from the Talking Head workflow."
             />
           ) : (
-            <div className="grid gap-[1px] sm:grid-cols-3 lg:grid-cols-4 bg-ink/15">
+            <div className="grid gap-px sm:grid-cols-3 lg:grid-cols-4 bg-ink/15">
               {avatars.map((avatar) => {
                 const avatarUrl = avatar.url.startsWith("http")
                   ? avatar.url
                   : `${API_URL}${avatar.url}`;
                 return (
                   <article key={avatar.filename} className="bg-paper overflow-hidden">
-                    <div className="aspect-square bg-ink/[0.06]">
+                    <div className="aspect-square bg-ink/6">
                       <img
                         src={avatarUrl}
                         alt={avatar.filename}

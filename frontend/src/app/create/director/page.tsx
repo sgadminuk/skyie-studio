@@ -117,7 +117,7 @@ export default function DirectorPage() {
             <span className="text-mono-sm text-ink/40">§02</span>
             <h2 className="text-h3 text-ink">Template.</h2>
           </header>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-[1px] bg-ink/15">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-ink/15">
             {TEMPLATES.map((t) => (
               <button
                 key={t.value}
@@ -127,7 +127,7 @@ export default function DirectorPage() {
                   "text-left p-3 transition-colors",
                   template === t.value
                     ? "bg-ink text-paper"
-                    : "bg-paper text-ink hover:bg-ink/[0.04]",
+                    : "bg-paper text-ink hover:bg-ink/4",
                 )}
               >
                 <p className="text-sm">{t.label}</p>

@@ -138,7 +138,7 @@ export default function CreatePage() {
         </p>
       </header>
 
-      <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
+      <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
         {WORKFLOWS.map((wf, i) => (
           <Link
             key={wf.href}

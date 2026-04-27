@@ -25,7 +25,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-paper text-ink antialiased">
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[10000] focus:bg-paper focus:text-ink focus:px-3 focus:py-2 focus:outline-2 focus:outline-signal"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-10000 focus:bg-paper focus:text-ink focus:px-3 focus:py-2 focus:outline-2 focus:outline-signal"
         >
           Skip to content
         </a>

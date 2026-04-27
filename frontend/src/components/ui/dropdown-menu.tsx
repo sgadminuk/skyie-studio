@@ -19,11 +19,11 @@ const DropdownMenuSub = DropdownMenuPrimitive.Sub
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
 
 const itemBase = [
-  "relative flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-sm outline-none transition-colors",
+  "relative flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-sm outline-hidden transition-colors",
   "text-ink",
   "focus:bg-ink focus:text-paper",
   "data-[state=open]:bg-ink data-[state=open]:text-paper",
-  "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+  "data-disabled:pointer-events-none data-disabled:opacity-50",
   "[&>svg]:h-4 [&>svg]:w-4 [&>svg]:shrink-0",
 ].join(" ")
 
@@ -45,7 +45,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
 DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName
 
 const surfaceBase = [
-  "z-50 min-w-[10rem] overflow-hidden",
+  "z-50 min-w-40 overflow-hidden",
   "border border-ink/20 bg-paper text-ink",
   "data-[state=open]:animate-in data-[state=closed]:animate-out",
   "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -71,7 +71,7 @@ const DropdownMenuContent = React.forwardRef<
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      className={cn(surfaceBase, "max-h-[var(--radix-dropdown-menu-content-available-height)]", className)}
+      className={cn(surfaceBase, "max-h-(--radix-dropdown-menu-content-available-height)", className)}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>

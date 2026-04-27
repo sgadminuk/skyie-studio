@@ -48,7 +48,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-paper text-ink">
-      <header className="flex items-center justify-between px-[var(--gutter)] py-5 border-b border-ink/15">
+      <header className="flex items-center justify-between px-(--gutter) py-5 border-b border-ink/15">
         <Link href="/" className="flex items-center gap-3" aria-label="Skyie Studio · home">
           <DriftMark size={24} variant="full" speed={4} className="text-ink" />
           <span className="text-mono-sm tracking-[0.22em]">SKYIE STUDIO</span>
@@ -59,7 +59,7 @@ export default function RegisterPage() {
         </div>
       </header>
 
-      <main className="flex-1 grid grid-cols-12 gap-x-[var(--gutter)] px-[var(--gutter)] py-[clamp(40px,8vh,96px)]">
+      <main className="flex-1 grid grid-cols-12 gap-x-(--gutter) px-(--gutter) py-[clamp(40px,8vh,96px)]">
         <div className="col-span-12 lg:col-span-7 flex items-center justify-center mb-12 lg:mb-0">
           <DriftMark
             variant="full"
@@ -69,7 +69,7 @@ export default function RegisterPage() {
           />
         </div>
 
-        <div className="col-span-12 lg:col-span-5 lg:col-start-8 flex flex-col gap-8 max-w-[26rem] lg:mt-12">
+        <div className="col-span-12 lg:col-span-5 lg:col-start-8 flex flex-col gap-8 max-w-104 lg:mt-12">
           <div className="flex flex-col gap-3">
             <span className="text-mono-sm text-ink/40">REGISTER · 01 / 01</span>
             <h1 className="text-h2">Request access.</h1>
@@ -155,7 +155,7 @@ export default function RegisterPage() {
         </div>
       </main>
 
-      <footer className="border-t border-ink/15 px-[var(--gutter)] py-4 flex items-center justify-between text-mono-sm text-ink/45">
+      <footer className="border-t border-ink/15 px-(--gutter) py-4 flex items-center justify-between text-mono-sm text-ink/45">
         <span>© 2026 Skyie Studio</span>
         <span>Rochester / SF</span>
       </footer>

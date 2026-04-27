@@ -185,7 +185,7 @@ export default function JobDetailPage() {
   const attachmentUrl = job.attachment_url ? `${API_URL}${job.attachment_url}` : downloadUrl;
   const aspectClass = (() => {
     const ar = (job.params as Record<string, unknown>)?.aspect_ratio;
-    if (ar === "9:16") return "aspect-[9/16] max-w-sm";
+    if (ar === "9:16") return "aspect-9/16 max-w-sm";
     if (ar === "1:1") return "aspect-square max-w-xl";
     return "aspect-video";
   })();
@@ -291,7 +291,7 @@ export default function JobDetailPage() {
                 </Button>
               )}
             </header>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-[1px] bg-ink/15">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-px bg-ink/15">
               {tiles.map((scene, i) => {
                 const s = status[i] || {};
                 const imgUrl = s.image_path
@@ -301,7 +301,7 @@ export default function JobDetailPage() {
                 return (
                   <div
                     key={i}
-                    className="relative group aspect-square overflow-hidden bg-ink/[0.06]"
+                    className="relative group aspect-square overflow-hidden bg-ink/6"
                   >
                     {imgUrl ? (
                       <>
@@ -409,7 +409,7 @@ export default function JobDetailPage() {
             <span className="text-mono-sm text-destructive">ERR</span>
             <h2 className="text-h3 text-destructive">Failure.</h2>
           </header>
-          <div className="border border-destructive/40 bg-destructive/[0.04] px-6 py-5 flex flex-col gap-3">
+          <div className="border border-destructive/40 bg-destructive/4 px-6 py-5 flex flex-col gap-3">
             {job.error_code && ERROR_CODE_MESSAGES[job.error_code] ? (
               <>
                 <p className="text-sm text-destructive">{ERROR_CODE_MESSAGES[job.error_code].title}</p>

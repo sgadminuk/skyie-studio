@@ -128,11 +128,11 @@ export default function NewBrandPage() {
       </header>
 
       {mode === "picker" && (
-        <div className="grid gap-[1px] sm:grid-cols-2 bg-ink/15">
+        <div className="grid gap-px sm:grid-cols-2 bg-ink/15">
           <button
             type="button"
             onClick={() => setMode("scrape")}
-            className="bg-paper p-6 flex flex-col gap-3 text-left transition-colors hover:bg-ink/[0.04]"
+            className="bg-paper p-6 flex flex-col gap-3 text-left transition-colors hover:bg-ink/4"
           >
             <div className="flex items-center gap-3">
               <Wand2 className="h-5 w-5 text-signal" />
@@ -148,7 +148,7 @@ export default function NewBrandPage() {
               setInitial({ name: "" });
               setMode("manual");
             }}
-            className="bg-paper p-6 flex flex-col gap-3 text-left transition-colors hover:bg-ink/[0.04]"
+            className="bg-paper p-6 flex flex-col gap-3 text-left transition-colors hover:bg-ink/4"
           >
             <div className="flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-signal" />
@@ -234,7 +234,7 @@ export default function NewBrandPage() {
                   Best guess applied. Click any tile to swap.
                 </p>
               </header>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-[1px] bg-ink/15">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-px bg-ink/15">
                 {scrapeResult.logo_candidates.map((url) => {
                   const active = url === selectedCandidate;
                   return (
@@ -245,7 +245,7 @@ export default function NewBrandPage() {
                       disabled={switchingLogo || active}
                       className={cn(
                         "relative aspect-square bg-paper flex items-center justify-center p-3 transition-colors",
-                        active ? "outline outline-2 outline-signal" : "hover:bg-ink/[0.04]",
+                        active ? "outline-solid outline-2 outline-signal" : "hover:bg-ink/4",
                       )}
                       aria-label={`Use logo candidate ${url}`}
                       title={url}

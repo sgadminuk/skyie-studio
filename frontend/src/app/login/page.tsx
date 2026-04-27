@@ -116,7 +116,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col bg-paper text-ink">
       {/* Header strip */}
-      <header className="flex items-center justify-between px-[var(--gutter)] py-5 border-b border-ink/15">
+      <header className="flex items-center justify-between px-(--gutter) py-5 border-b border-ink/15">
         <Link href="/" className="flex items-center gap-3" aria-label="Skyie Studio · home">
           <DriftMark size={24} variant="full" speed={4} className="text-ink" />
           <span className="text-mono-sm tracking-[0.22em]">SKYIE STUDIO</span>
@@ -128,7 +128,7 @@ export default function LoginPage() {
       </header>
 
       {/* Main grid */}
-      <main className="flex-1 grid grid-cols-12 gap-x-[var(--gutter)] px-[var(--gutter)] py-[clamp(40px,8vh,96px)]">
+      <main className="flex-1 grid grid-cols-12 gap-x-(--gutter) px-(--gutter) py-[clamp(40px,8vh,96px)]">
         {/* Big Drift mark · cols 1-7 (lg) — decorative, scaled massive */}
         <div className="col-span-12 lg:col-span-7 flex items-center justify-center mb-12 lg:mb-0">
           <DriftMark
@@ -140,7 +140,7 @@ export default function LoginPage() {
         </div>
 
         {/* Form · cols 8-12 (lg) */}
-        <div className="col-span-12 lg:col-span-5 lg:col-start-8 flex flex-col gap-8 max-w-[26rem] lg:mt-12">
+        <div className="col-span-12 lg:col-span-5 lg:col-start-8 flex flex-col gap-8 max-w-104 lg:mt-12">
           <div className="flex flex-col gap-3">
             <span className="text-mono-sm text-ink/40">
               {step === "email" ? "ACCESS · 01 / 02" : "ACCESS · 02 / 02"}
@@ -265,7 +265,7 @@ export default function LoginPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-ink/15 px-[var(--gutter)] py-4 flex items-center justify-between text-mono-sm text-ink/45">
+      <footer className="border-t border-ink/15 px-(--gutter) py-4 flex items-center justify-between text-mono-sm text-ink/45">
         <span>© 2026 Skyie Studio</span>
         <span>Rochester / SF</span>
       </footer>

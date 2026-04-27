@@ -223,7 +223,7 @@ function DashboardContent() {
           <span className="text-mono-sm text-ink/40">§01</span>
           <h2 id="actions-heading" className="text-h3 text-ink">Workflows.</h2>
         </header>
-        <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
+        <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
           {QUICK_ACTIONS.map((a) => (
             <Link
               key={a.href}

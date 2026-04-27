@@ -65,7 +65,7 @@ export default function BrandListPage() {
       </header>
 
       {loading ? (
-        <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
+        <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
           <Skeleton className="h-44" />
           <Skeleton className="h-44" />
           <Skeleton className="h-44" />
@@ -85,7 +85,7 @@ export default function BrandListPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
+        <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
           {brands.map((brand) => {
             const logoUrl = brand.logo_url
               ? brand.logo_url.startsWith("http")
@@ -96,7 +96,7 @@ export default function BrandListPage() {
               <article key={brand.id} className="bg-paper overflow-hidden flex flex-col">
                 <Link
                   href={`/brand/${brand.id}`}
-                  className="h-32 bg-ink/[0.04] flex items-center justify-center p-4 border-b border-ink/15 transition-colors hover:bg-ink/[0.08]"
+                  className="h-32 bg-ink/4 flex items-center justify-center p-4 border-b border-ink/15 transition-colors hover:bg-ink/8"
                 >
                   {logoUrl ? (
                     <img

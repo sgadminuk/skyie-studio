@@ -1,6 +1,128 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-ink: rgb(var(--ink-rgb));
+  --color-paper: rgb(var(--paper-rgb));
+  --color-signal: rgb(var(--signal-rgb));
+  --color-char: rgb(var(--char-rgb));
+  --color-background: rgb(var(--background));
+  --color-foreground: rgb(var(--foreground));
+
+  --color-card: rgb(var(--card));
+  --color-card-foreground: rgb(var(--card-foreground));
+
+  --color-popover: rgb(var(--popover));
+  --color-popover-foreground: rgb(var(--popover-foreground));
+
+  --color-primary: rgb(var(--primary));
+  --color-primary-foreground: rgb(var(--primary-foreground));
+
+  --color-secondary: rgb(var(--secondary));
+  --color-secondary-foreground: rgb(var(--secondary-foreground));
+
+  --color-muted: rgb(var(--muted));
+  --color-muted-foreground: rgb(var(--muted-foreground));
+
+  --color-accent: rgb(var(--accent));
+  --color-accent-foreground: rgb(var(--accent-foreground));
+
+  --color-destructive: rgb(var(--destructive));
+  --color-destructive-foreground: rgb(var(--destructive-foreground));
+
+  --color-border: rgb(var(--border));
+  --color-input: rgb(var(--input));
+  --color-ring: rgb(var(--ring));
+
+  --color-chart-1: rgb(var(--chart-1));
+  --color-chart-2: rgb(var(--chart-2));
+  --color-chart-3: rgb(var(--chart-3));
+  --color-chart-4: rgb(var(--chart-4));
+  --color-chart-5: rgb(var(--chart-5));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius));
+  --radius-sm: calc(var(--radius));
+
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --font-weight-body: 380;
+
+  --ease-out-skyie: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-inout-skyie: cubic-bezier(0.83, 0, 0.17, 1);
+  --ease-drift: cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility text-display {
+  /* Skyie type primitives — parallel to marketing's @utility classes */
+  font-size: var(--t-display);
+  font-weight: 380;
+  letter-spacing: -0.04em;
+  line-height: 0.88;
+}
+
+@utility text-h1 {
+  font-size: var(--t-h1);
+  font-weight: 380;
+  letter-spacing: -0.04em;
+  line-height: 0.92;
+}
+
+@utility text-h2 {
+  font-size: var(--t-h2);
+  font-weight: 380;
+  letter-spacing: -0.03em;
+  line-height: 0.96;
+}
+
+@utility text-h3 {
+  font-size: var(--t-h3);
+  font-weight: 380;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+@utility text-mono-sm {
+  font-family: var(--font-mono), ui-monospace, 'SFMono-Regular', monospace;
+  font-size: var(--t-mono-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@utility text-caption {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--t-caption);
+  letter-spacing: 0.04em;
+}
+
+@utility font-mono-tabular {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
 
 /* -----------------------------------------------------------------------
  * Skyie Studio · authenticated app — base layer
@@ -134,53 +256,5 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  /* Skyie type primitives — parallel to marketing's @utility classes */
-  .text-display {
-    font-size: var(--t-display);
-    font-weight: 380;
-    letter-spacing: -0.04em;
-    line-height: 0.88;
-  }
-  .text-h1 {
-    font-size: var(--t-h1);
-    font-weight: 380;
-    letter-spacing: -0.04em;
-    line-height: 0.92;
-  }
-  .text-h2 {
-    font-size: var(--t-h2);
-    font-weight: 380;
-    letter-spacing: -0.03em;
-    line-height: 0.96;
-  }
-  .text-h3 {
-    font-size: var(--t-h3);
-    font-weight: 380;
-    letter-spacing: -0.02em;
-    line-height: 1.05;
-  }
-  .text-mono-sm {
-    font-family: var(--font-mono), ui-monospace, "SFMono-Regular", monospace;
-    font-size: var(--t-mono-sm);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-  .text-caption {
-    font-family: var(--font-mono), ui-monospace, monospace;
-    font-size: var(--t-caption);
-    letter-spacing: 0.04em;
-  }
-
-  .font-mono-tabular {
-    font-family: var(--font-mono), ui-monospace, monospace;
-    font-variant-numeric: tabular-nums;
   }
 }

@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
  *   mid   · live UTC clock + credits readout (instrument-style)
  *   right · user identity (mono initials in a 32px square + dropdown)
  *
- * No backdrop-blur (per the brand anti-pattern list).
+ * No backdrop-blur-sm (per the brand anti-pattern list).
  */
 export function Topbar() {
   const { toggle } = useSidebar();
@@ -76,7 +76,7 @@ export function Topbar() {
                 aria-label="Account menu"
                 className="group flex h-9 items-center gap-3 border border-ink/20 px-2.5 transition-colors hover:border-ink"
               >
-                <span className="flex h-6 w-6 items-center justify-center bg-ink text-paper text-mono-sm tracking-[0.05em]">
+                <span className="flex h-6 w-6 items-center justify-center bg-ink text-paper text-mono-sm tracking-wider">
                   {getInitials(user.name)}
                 </span>
                 <span className="hidden md:inline text-mono-sm text-ink">

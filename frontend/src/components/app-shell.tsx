@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Topbar />
         <main
           id="main"
-          className="flex-1 px-[var(--gutter)] py-[clamp(20px,3vh,40px)]"
+          className="flex-1 px-(--gutter) py-[clamp(20px,3vh,40px)]"
         >
           {children}
         </main>

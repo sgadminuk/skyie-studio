@@ -175,7 +175,7 @@ export default function ProjectsPage() {
         </header>
 
         {loading ? (
-          <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
+          <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="bg-paper p-6 flex flex-col gap-3">
                 <Skeleton className="h-5 w-32" />
@@ -193,7 +193,7 @@ export default function ProjectsPage() {
             </span>
           </div>
         ) : (
-          <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
+          <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
             {projects.map((project) => {
               const WorkflowIcon = WORKFLOW_ICONS[project.workflow] || Video;
               return (
@@ -203,7 +203,7 @@ export default function ProjectsPage() {
                 >
                   <header className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center bg-ink/[0.06] border border-ink/10">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center bg-ink/6 border border-ink/10">
                         <WorkflowIcon className="h-4 w-4 text-ink/70" />
                       </div>
                       <h3 className="text-h3 text-ink truncate">{project.name}</h3>

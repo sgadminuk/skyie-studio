@@ -72,7 +72,7 @@ export default function AdminPage() {
           <span className="text-mono-sm text-ink/40">§01</span>
           <h2 id="stats-heading" className="text-h3 text-ink">Counters.</h2>
         </header>
-        <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-4 bg-ink/15">
+        <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-4 bg-ink/15">
           {loading ? (
             Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="bg-paper p-6 flex flex-col gap-3">
