@@ -47,5 +47,9 @@ logs/
 # Docker
 docker-compose.override.yml
 
+# MCP / browser test artifacts
+.playwright-mcp/
+.chrome-devtools-mcp/
+
 # Credentials / GPU server
 gpu-server/
