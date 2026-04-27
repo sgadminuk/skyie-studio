@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Settings, Server, Loader2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Server, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { getHealth } from "@/lib/api";
 
 interface HealthData {
@@ -33,102 +31,89 @@ export default function SettingsPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1">
-          System status and configuration
+    <div className="mx-auto w-full max-w-3xl flex flex-col gap-[clamp(32px,5vh,64px)]">
+      <header className="flex flex-col gap-3">
+        <span className="text-mono-sm text-ink/40">SETTINGS · §00</span>
+        <h1 className="text-h2 text-ink">System status.</h1>
+        <p className="text-ink/60 max-w-[60ch]">
+          Read-only telemetry. The studio reports its own state — no
+          configuration knobs here yet.
         </p>
-      </div>
+      </header>
 
-      {/* Server Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Server className="h-4 w-4" />
-            Server Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Server status */}
+      <section aria-labelledby="server-heading" className="flex flex-col gap-4">
+        <header className="flex items-baseline gap-3">
+          <span className="text-mono-sm text-ink/40">§01</span>
+          <h2 id="server-heading" className="text-h3 text-ink flex items-baseline gap-2">
+            <Server className="h-4 w-4 text-ink/55 self-center" />
+            Server.
+          </h2>
+        </header>
+
+        <div className="border border-ink/15">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-ink/55" />
             </div>
           ) : health ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Status</span>
-                <Badge
-                  variant={
-                    health.status === "healthy" ? "default" : "destructive"
-                  }
-                >
+            <div className="divide-y divide-ink/15">
+              <Row label="Status">
+                <Badge variant={health.status === "healthy" ? "default" : "destructive"}>
                   {health.status}
                 </Badge>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Environment</span>
-                <span className="text-sm text-muted-foreground">
-                  {health.environment}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Mock Mode</span>
-                <Badge variant={health.mock_mode ? "secondary" : "default"}>
+              </Row>
+              <Row label="Environment">{health.environment}</Row>
+              <Row label="Mock mode">
+                <Badge variant={health.mock_mode ? "secondary" : "outline"}>
                   {health.mock_mode ? "Enabled" : "Disabled"}
                 </Badge>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Disk Usage</span>
-                <span className="text-sm text-muted-foreground">
-                  {health.disk.used_gb} / {health.disk.total_gb} GB
-                </span>
-              </div>
+              </Row>
+              <Row label="Disk">
+                {health.disk.used_gb} / {health.disk.total_gb} GB
+              </Row>
               {health.models && (
                 <>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">VRAM Usage</span>
-                    <span className="text-sm text-muted-foreground">
-                      {health.models.vram_used_gb} / {health.models.vram_limit_gb} GB
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Loaded Models</span>
-                    <span className="text-sm text-muted-foreground">
-                      {health.models.loaded_models.length === 0
-                        ? "None"
-                        : health.models.loaded_models.join(", ")}
-                    </span>
-                  </div>
+                  <Row label="VRAM">
+                    {health.models.vram_used_gb} / {health.models.vram_limit_gb} GB
+                  </Row>
+                  <Row label="Loaded models">
+                    {health.models.loaded_models.length === 0
+                      ? "None"
+                      : health.models.loaded_models.join(", ")}
+                  </Row>
                 </>
               )}
             </div>
           ) : (
-            <p className="text-sm text-destructive">
-              Unable to connect to the API server
+            <p className="px-5 py-6 text-mono-sm text-destructive">
+              Unable to connect to the API server.
             </p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      {/* Account (Phase 5 placeholder) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Account
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            User accounts and authentication will be available in a future
-            update.
+      {/* Account placeholder */}
+      <section aria-labelledby="account-heading" className="flex flex-col gap-4">
+        <header className="flex items-baseline gap-3">
+          <span className="text-mono-sm text-ink/40">§02</span>
+          <h2 id="account-heading" className="text-h3 text-ink">Account.</h2>
+        </header>
+        <div className="border border-ink/15 px-5 py-6">
+          <p className="text-mono-sm text-ink/60">
+            User accounts and authentication will be available in a future update.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[10rem_1fr] gap-4 px-5 py-4 items-baseline">
+      <span className="text-mono-sm text-ink/40">{label}</span>
+      <span className="text-mono-sm text-ink truncate">{children}</span>
     </div>
   );
 }

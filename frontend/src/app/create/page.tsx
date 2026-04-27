@@ -1,9 +1,27 @@
 import Link from "next/link";
-import { Mic, Film, Video, ArrowRight, ImagePlus, Sparkles, RefreshCw, Layers, UserCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+  Mic,
+  Film,
+  Video,
+  ImagePlus,
+  Sparkles,
+  RefreshCw,
+  Layers,
+  UserCircle,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const WORKFLOWS = [
+type Workflow = {
+  href: string;
+  icon: LucideIcon;
+  title: string;
+  badge?: string;
+  description: string;
+  features: string[];
+  credits: string;
+};
+
+const WORKFLOWS: Workflow[] = [
   {
     href: "/create/studio",
     icon: Layers,
@@ -11,7 +29,12 @@ const WORKFLOWS = [
     badge: "Premium",
     description:
       "Generate premium images and videos with Veo 3.1 and Nano Banana. Multi-image composition, text-to-video with synchronized audio, inpainting, and more — all in one unified canvas.",
-    features: ["Veo 3.1 video (1080p + audio)", "Nano Banana image gen", "Up to 10-image composition", "Image editing + inpainting"],
+    features: [
+      "Veo 3.1 video (1080p + audio)",
+      "Nano Banana image gen",
+      "Up to 10-image composition",
+      "Image editing + inpainting",
+    ],
     credits: "8–480 credits",
   },
   {
@@ -72,7 +95,7 @@ const WORKFLOWS = [
     description:
       "Transform existing videos with AI — change style, extend duration, or apply creative effects. Upload a video and describe the transformation.",
     features: ["Video-to-video", "Video extend", "Style transfer", "Duration control"],
-    credits: "10-15 credits",
+    credits: "10–15 credits",
   },
   {
     href: "/create/talking-head",
@@ -105,51 +128,65 @@ const WORKFLOWS = [
 
 export default function CreatePage() {
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Create</h1>
-        <p className="text-muted-foreground mt-1">
-          Choose a workflow to generate your video
+    <div className="flex flex-col gap-[clamp(32px,5vh,64px)]">
+      <header className="flex flex-col gap-3">
+        <span className="text-mono-sm text-ink/40">CREATE · 09 WORKFLOWS</span>
+        <h1 className="text-h2 text-ink">Choose a workflow.</h1>
+        <p className="text-ink/60 max-w-[60ch]">
+          Each workflow is a different pipeline. Premium and New tags mark
+          recently shipped capabilities.
         </p>
-      </div>
+      </header>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {WORKFLOWS.map((wf) => (
-          <Link key={wf.href} href={wf.href}>
-            <Card className="h-full cursor-pointer transition-all hover:border-primary/50 hover:shadow-lg">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <wf.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <CardTitle className="flex items-center gap-2">
-                    {wf.title}
-                    {"badge" in wf && wf.badge && (
-                      <Badge variant="default" className="text-[10px] px-1.5 py-0">{wf.badge}</Badge>
-                    )}
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {wf.description}
-                </p>
-                <ul className="space-y-1">
-                  {wf.features.map((f) => (
-                    <li
-                      key={f}
-                      className="flex items-center gap-2 text-sm text-muted-foreground"
-                    >
-                      <ArrowRight className="h-3 w-3 text-primary" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-xs text-muted-foreground/70 pt-2 border-t">
-                  {wf.credits}
-                </p>
-              </CardContent>
-            </Card>
+      <div className="grid gap-[1px] sm:grid-cols-2 lg:grid-cols-3 bg-ink/15">
+        {WORKFLOWS.map((wf, i) => (
+          <Link
+            key={wf.href}
+            href={wf.href}
+            className="group relative bg-paper p-6 flex flex-col gap-5 transition-colors hover:bg-ink/5"
+          >
+            <div className="flex items-baseline justify-between">
+              <span className="text-mono-sm text-ink/40">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <wf.icon className="h-5 w-5 text-ink/55 group-hover:text-signal transition-colors" />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <div className="flex items-baseline gap-3">
+                <h2 className="text-h3 text-ink">{wf.title}</h2>
+                {wf.badge && (
+                  <span className="text-mono-sm tracking-[0.18em] text-signal">
+                    {wf.badge}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-ink/70 leading-relaxed">
+                {wf.description}
+              </p>
+            </div>
+
+            <ul className="flex flex-col gap-1.5 list-none p-0 mt-auto">
+              {wf.features.map((f) => (
+                <li
+                  key={f}
+                  className="text-mono-sm text-ink/65 flex items-baseline gap-2"
+                >
+                  <span aria-hidden className="text-signal">›</span>
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="flex items-baseline justify-between border-t border-ink/15 pt-3">
+              <span className="text-mono-sm text-ink/40">{wf.credits}</span>
+              <span
+                aria-hidden
+                className="text-mono-sm text-ink/30 group-hover:text-ink transition-colors"
+              >
+                →
+              </span>
+            </div>
           </Link>
         ))}
       </div>
