@@ -3,25 +3,29 @@
 import { useEffect, useRef, useState } from "react";
 import { specimenClips } from "@/content/home";
 import { mapRange } from "@/lib/motion";
+import { DriftMark } from "@/components/brand/DriftMark";
 import { useMotionEnabled } from "@/components/system/MotionPolicyProvider";
 
 /**
  * §3 Specimen — scroll-scrub videos (per brief §4.1).
  *
- * Three clips, switched by horizontal arrow keys / scroll-snap on a
- * mobile pinch row. The active clip's currentTime is bound to the
- * scroll position of this section's pinned wrapper. Below the clip,
- * a mono caption shows prompt / model / seed / render time.
+ * Three clips, switched by horizontal arrow keys / nav buttons. The
+ * active clip's currentTime is bound to the scroll position of the
+ * section. A mono caption ledger shows prompt / model / seed / render
+ * time alongside.
+ *
+ * If the source video isn't shipped (404) or hasn't loaded yet, the
+ * section renders a procedural Drift placeholder so the section is
+ * never empty. The video fades in only after `loadeddata` fires; on
+ * `error` it stays hidden.
  *
  * Reduced motion: the active video gets `controls`. Switching still works.
- *
- * Note: the actual /public/video/*.mp4 files are not yet shipped; the
- * <video> tags reference them with onError fallback to a poster bg.
  */
 
 export function Specimen() {
   const motionEnabled = useMotionEnabled();
   const [activeIdx, setActiveIdx] = useState(0);
+  const [readyMap, setReadyMap] = useState<Record<string, boolean>>({});
   const sectionRef = useRef<HTMLElement>(null);
   const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
 
@@ -39,11 +43,13 @@ export function Specimen() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Scroll-scrub the active video
+  // Scroll-scrub the active video — only when it's actually ready.
   useEffect(() => {
     const el = sectionRef.current;
     const video = videoRefs.current[activeIdx];
-    if (!el || !video) return;
+    const clip = specimenClips[activeIdx];
+    if (!el || !video || !clip) return;
+    if (!readyMap[clip.id]) return;
 
     if (!motionEnabled) {
       video.controls = true;
@@ -82,9 +88,10 @@ export function Specimen() {
       window.removeEventListener("resize", onScroll);
       if (raf !== 0) cancelAnimationFrame(raf);
     };
-  }, [activeIdx, motionEnabled]);
+  }, [activeIdx, motionEnabled, readyMap]);
 
   const clip = specimenClips[activeIdx]!;
+  const activeReady = !!readyMap[clip.id];
 
   return (
     <section
@@ -125,6 +132,22 @@ export function Specimen() {
       <div className="grid grid-cols-12 gap-x-[var(--gutter)] gap-y-8">
         <div className="col-span-12 lg:col-span-9">
           <div className="relative bg-char/5 aspect-video overflow-hidden">
+            {/* Procedural placeholder · always rendered behind videos.
+                Visible until the video reports loadeddata. */}
+            <div
+              aria-hidden
+              className="absolute inset-0 flex items-center justify-center text-ink"
+            >
+              <DriftMark
+                size="60%"
+                speed={5 + activeIdx * 1.5}
+                style={{ height: "60%", width: "auto" }}
+              />
+              <span className="absolute bottom-4 left-4 text-mono-sm text-ink/45">
+                {clip.id} · awaiting source · scroll-scrub idle
+              </span>
+            </div>
+
             {specimenClips.map((c, i) => (
               <video
                 key={c.id}
@@ -136,16 +159,24 @@ export function Specimen() {
                 preload="metadata"
                 muted
                 playsInline
+                onLoadedData={() =>
+                  setReadyMap((m) => ({ ...m, [c.id]: true }))
+                }
+                onError={() =>
+                  setReadyMap((m) => ({ ...m, [c.id]: false }))
+                }
                 className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
                 style={{
-                  opacity: i === activeIdx ? 1 : 0,
-                  pointerEvents: i === activeIdx ? "auto" : "none",
+                  opacity: i === activeIdx && activeReady ? 1 : 0,
+                  pointerEvents:
+                    i === activeIdx && activeReady ? "auto" : "none",
                 }}
                 aria-label={c.title}
               />
             ))}
-            {/* Visible label even when video missing */}
-            <span className="absolute top-3 left-3 text-mono-sm text-ink/60 bg-paper/80 px-2 py-1">
+
+            {/* Title label — always on top */}
+            <span className="absolute top-3 left-3 text-mono-sm text-ink bg-paper/95 px-2 py-1 z-10">
               {clip.title}
             </span>
           </div>
@@ -162,7 +193,9 @@ export function Specimen() {
       </div>
 
       <p className="mt-10 text-mono-sm text-ink/45">
-        Scroll to scrub the clip. ← / → switch between clips.
+        {activeReady
+          ? "Scroll to scrub the clip. ← / → switch between clips."
+          : "← / → switch between clips. Source video not yet shipped — placeholder shown."}
       </p>
     </section>
   );

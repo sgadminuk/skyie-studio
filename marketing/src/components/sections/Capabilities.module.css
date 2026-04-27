@@ -1,0 +1,46 @@
+/* -----------------------------------------------------------------------
+ * §4 Capabilities · expansion anchoring
+ *
+ * Problem: when a cell expands to col-span-2, a cell in the rightmost
+ * column has only 1 column of free space to its right. CSS Grid wraps
+ * the expanded cell to the next row, causing a horizontal reflow that
+ * moves the cursor off the cell — fires mouseleave — collapses — flickers.
+ *
+ * Fix: cells in the rightmost column anchor their expansion to the
+ * RIGHT edge instead of growing rightward. `grid-column: span 2 / -1`
+ * reads as "end at the last column line, span 2 leftward."
+ *
+ * Bottom-row overflow is a separate issue (row-span-2 extends the grid
+ * vertically) but doesn't cause horizontal reflow → no flicker → not
+ * fixed here. The grid simply grows in height and pushes the section
+ * below it down by one row's worth, which is fine.
+ *
+ * Column counts per breakpoint: base=2, sm=3, lg=4. The :nth-child()
+ * selectors match the rightmost column at each breakpoint.
+ * -------------------------------------------------------------------- */
+
+/* base — 2 cols. Every 2nd cell is on the right edge. */
+.cell.expanded:nth-child(2n) {
+  grid-column: span 2 / -1;
+}
+
+@media (min-width: 640px) {
+  /* sm — 3 cols. Every 3rd cell is on the right edge.
+     Reset the base rule for cells that are no longer right-edge here. */
+  .cell.expanded:nth-child(2n) {
+    grid-column: auto / span 2;
+  }
+  .cell.expanded:nth-child(3n) {
+    grid-column: span 2 / -1;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* lg — 4 cols. Every 4th cell is on the right edge. */
+  .cell.expanded:nth-child(3n) {
+    grid-column: auto / span 2;
+  }
+  .cell.expanded:nth-child(4n) {
+    grid-column: span 2 / -1;
+  }
+}

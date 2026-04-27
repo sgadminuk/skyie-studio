@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { capabilities, type Capability } from "@/content/home";
 import { DriftMark } from "@/components/brand/DriftMark";
 import { useMotionEnabled } from "@/components/system/MotionPolicyProvider";
+import styles from "./Capabilities.module.css";
 
 /**
  * §4 Capabilities — 4×4 grid (per brief §4.1).
@@ -77,8 +78,10 @@ export function Capabilities() {
             <li
               key={c.id}
               className={[
+                styles.cell,
+                isExpanded ? styles.expanded : "",
                 "relative bg-paper p-5 min-h-[180px] flex flex-col justify-between",
-                "transition-[opacity,grid-column,grid-row] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                "transition-opacity duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
                 isExpanded ? "z-10 col-span-2 row-span-2 min-h-[280px]" : "",
                 isDimmed ? "opacity-30" : "opacity-100",
               ].join(" ")}
