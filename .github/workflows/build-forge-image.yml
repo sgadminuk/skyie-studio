@@ -70,6 +70,14 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          # docker driver runs BuildKit inside the host docker daemon (whose
+          # data-root is now /mnt/docker = 75 GB), instead of the default
+          # docker-container driver which runs buildkitd in a sub-container
+          # with its own ~5 GB overlay limit. The docker driver loses
+          # multi-platform builds (we only need linux/amd64) but can push
+          # to a registry and supports BuildKit features we use.
+          driver: docker
 
       - name: Log in to ghcr.io
         uses: docker/login-action@v3
@@ -100,8 +108,10 @@ jobs:
           # written to image layers; doesn't appear in `docker history`.
           secrets: |
             "hftoken=${{ secrets.HF_TOKEN }}"
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # gha cache backend needs the docker-container driver — we're on
+          # the docker driver to get the 75 GB /mnt overlay. Skip cache for
+          # now; first build will pay full cost (~30-50 min), incremental
+          # builds will pay full cost too. Worth it for it actually working.
           provenance: false
 
       - name: Image summary
