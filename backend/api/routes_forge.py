@@ -15,7 +15,6 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import require_forge_user
-from config import settings
 from db.base import get_session
 from db.models import User
 from services.credit_service import check_credits, get_credit_cost, reserve_credits

@@ -80,7 +80,7 @@ async def execute_forge_image(job_id: str, params: dict) -> str:
         # Worker returned an explicit error string — surface it to the UI.
         update_job(job_id, error_code="forge_worker_error")
         raise RuntimeError(f"Forge worker error: {e}") from e
-    except RunPodServerlessError as e:
+    except RunPodServerlessError:
         update_job(job_id, error_code="forge_transport")
         raise
 
