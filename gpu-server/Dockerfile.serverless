@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # =============================================================================
 # Skyie Forge — RunPod Serverless GPU worker
 #
@@ -5,9 +6,10 @@
 # image so cold starts only need GPU init (~30s) instead of pulling 24+ GB
 # of weights every time. Image is ~30 GB compiled.
 #
-# HF_TOKEN is required at build time to download FLUX-dev (gated).
-# Pass it via RunPod's deploy form → "Environment variables" → HF_TOKEN.
-# Build args propagate to the download stage; the runtime image discards it.
+# HF_TOKEN is consumed at build time via BuildKit secrets — passed by the
+# GH Actions workflow as `--secret id=hftoken`, never appears in image
+# layers, never in `docker history`. The token lets the build download
+# the gated FLUX.1-dev weights; everything else is public.
 # =============================================================================
 
 # ---- Base ------------------------------------------------------------------
@@ -35,19 +37,29 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir hf_transfer
 
 # ---- Model weights (baked at build time) -----------------------------------
-# RunPod's HF_TOKEN env var is exposed as a build arg and consumed only
-# during the snapshot_download steps. The runtime image doesn't need it.
-ARG HF_TOKEN
-ENV HF_TOKEN=${HF_TOKEN}
-
-# Use a fixed cache dir at build time (will move to /runpod-volume at runtime
-# only if we want to persist downloads — for serverless, baked-in is faster).
+# HF_TOKEN is consumed via BuildKit secrets (not ARG/ENV) so it never lands
+# in the image's layer history or `docker history` output. The secret is
+# mounted as a file at /run/secrets/hftoken inside the RUN steps that
+# need it.
+#
+# Cache dir lives at /opt/hf-cache for the duration of the build.
 ENV BUILD_HF_CACHE=/opt/hf-cache
 RUN mkdir -p $BUILD_HF_CACHE
 
 # 1. FLUX.1-dev — gated, ~24 GB. Skip the .bin shards (we only need
 #    safetensors) and the big alt-format files we won't use.
-RUN python -c "\
+#
+# `set -e` + length sanity check makes a misconfigured secret fail loudly
+# (with the length, not the value) instead of silently 401ing on HF.
+RUN --mount=type=secret,id=hftoken,required=true \
+    set -e && \
+    HF_TOKEN_LEN=$(wc -c < /run/secrets/hftoken) && \
+    echo "[forge] HF_TOKEN secret length: ${HF_TOKEN_LEN} bytes" && \
+    if [ "${HF_TOKEN_LEN}" -lt 20 ]; then \
+        echo "[forge] HF_TOKEN looks too short (${HF_TOKEN_LEN}) — secret likely empty or mangled"; \
+        exit 1; \
+    fi && \
+    HF_TOKEN=$(cat /run/secrets/hftoken) python -c "\
 import os; \
 from huggingface_hub import snapshot_download; \
 snapshot_download( \
@@ -62,7 +74,7 @@ snapshot_download( \
   ], \
   ignore_patterns=['*.bin', '*.onnx', '*.gguf', 'transformer/*.bin'])"
 
-# 2. PuLID-FLUX weights — public repo, ~1 GB
+# 2. PuLID-FLUX weights — public repo, no token needed.
 RUN python -c "\
 import os; \
 from huggingface_hub import hf_hub_download; \
@@ -71,7 +83,7 @@ hf_hub_download( \
   filename='pulid_flux_v0.9.1.safetensors', \
   cache_dir=os.environ['BUILD_HF_CACHE'])"
 
-# 3. EVA-CLIP for PuLID identity embedding
+# 3. EVA-CLIP for PuLID identity embedding — public.
 RUN python -c "\
 import os; \
 from huggingface_hub import snapshot_download; \
@@ -80,7 +92,7 @@ snapshot_download( \
   cache_dir=os.environ['BUILD_HF_CACHE'], \
   allow_patterns=['EVA02_CLIP_L_336_psz14_s6B.pt'])"
 
-# 4. InsightFace antelopev2 (face detection + 512-d embedding)
+# 4. InsightFace antelopev2 (face detection + 512-d embedding) — public.
 RUN python -c "\
 import os; \
 from huggingface_hub import snapshot_download; \
@@ -93,9 +105,6 @@ snapshot_download( \
        -O /tmp/antelopev2.zip && \
      unzip -q /tmp/antelopev2.zip -d /root/.insightface/models/ && \
      rm /tmp/antelopev2.zip)
-
-# Strip HF_TOKEN from the final image so it doesn't leak in `docker history`.
-ENV HF_TOKEN=
 
 # ---- Handler ---------------------------------------------------------------
 COPY handler.py /app/handler.py

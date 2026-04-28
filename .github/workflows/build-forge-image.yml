@@ -75,8 +75,11 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            HF_TOKEN=${{ secrets.HF_TOKEN }}
+          # BuildKit `--secret` mounts the value as a file at /run/secrets/<id>
+          # only inside RUN steps that opt in via --mount=type=secret. Never
+          # written to image layers; doesn't appear in `docker history`.
+          secrets: |
+            "hftoken=${{ secrets.HF_TOKEN }}"
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
