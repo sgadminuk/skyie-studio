@@ -100,3 +100,20 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
     if not user.is_admin:
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
+
+
+def require_forge_user(user: User = Depends(get_current_user)) -> User:
+    """Dependency that gates the Forge platform.
+
+    Cloudflare Access protects the forge.skyie.studio frontend from public
+    discovery. This dependency is the API-side belt to that braces — even if
+    someone has a valid JWT, Forge endpoints reject the request unless the
+    user has explicitly been enrolled (forge_enabled=true). Once the
+    age-verification flow ships, that flow flips this flag.
+    """
+    if not user.forge_enabled:
+        raise HTTPException(
+            status_code=403,
+            detail="Forge access not enabled for this account",
+        )
+    return user

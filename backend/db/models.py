@@ -51,6 +51,12 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
+    # Forge access — gated open-weights platform on forge.skyie.studio.
+    # Defaults to false; flipped manually now, by age-verification later.
+    forge_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="false"
+    )
+
     # Billing columns
     stripe_customer_id: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True, unique=True

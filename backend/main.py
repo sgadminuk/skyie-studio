@@ -80,6 +80,7 @@ from api.routes_api_keys import router as api_keys_router
 from api.routes_gpu import router_internal as gpu_internal_router, router_public as gpu_status_router
 from api.routes_webhooks import router as webhooks_router
 from api.routes_brand import router as brand_router
+from api.routes_forge import router as forge_router
 
 app.include_router(health_router)
 app.include_router(auth_router)
@@ -96,3 +97,4 @@ app.include_router(gpu_internal_router)
 app.include_router(gpu_status_router)
 app.include_router(webhooks_router)
 app.include_router(brand_router)
+app.include_router(forge_router)
