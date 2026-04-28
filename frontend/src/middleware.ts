@@ -5,9 +5,11 @@ import { NextRequest, NextResponse } from "next/server";
  *
  *   skyie.studio          → marketing (root paths render the (marketing) group)
  *   app.skyie.studio      → dashboard (rewrite /foo → /dashboard/foo)
- *   localhost / preview   → both surfaces accessible directly:
+ *   forge.skyie.studio    → forge    (rewrite /foo → /forge/foo)
+ *   localhost / preview   → all surfaces accessible directly:
  *                             /              marketing apex
  *                             /dashboard/*   authenticated app
+ *                             /forge/*       gated open-weights platform
  *
  * The rewrite is invisible to the user — the address bar still shows
  * `app.skyie.studio/library`, but Next renders `/dashboard/library`.
@@ -19,9 +21,30 @@ const APP_HOSTS = new Set([
   "app.localhost:3000",
 ]);
 
+const FORGE_HOSTS = new Set([
+  "forge.skyie.studio",
+  "forge.localhost",
+  "forge.localhost:3000",
+]);
+
 export function middleware(req: NextRequest) {
   const host = req.headers.get("host") ?? "";
   const { pathname, search } = req.nextUrl;
+
+  if (FORGE_HOSTS.has(host)) {
+    if (
+      pathname.startsWith("/forge") ||
+      pathname === "/login" ||
+      pathname === "/register" ||
+      pathname.startsWith("/api/")
+    ) {
+      return NextResponse.next();
+    }
+    const url = req.nextUrl.clone();
+    url.pathname = `/forge${pathname === "/" ? "" : pathname}`;
+    url.search = search;
+    return NextResponse.rewrite(url);
+  }
 
   if (!APP_HOSTS.has(host)) {
     return NextResponse.next();

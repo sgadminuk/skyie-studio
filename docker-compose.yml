@@ -201,7 +201,7 @@ services:
       # rewrites app.skyie.studio/foo → /dashboard/foo internally.
       - "traefik.enable=true"
       - "traefik.docker.network=SkyieProxy"
-      - "traefik.http.routers.skyie-studio.rule=Host(`skyie.studio`) || Host(`www.skyie.studio`) || Host(`app.skyie.studio`)"
+      - "traefik.http.routers.skyie-studio.rule=Host(`skyie.studio`) || Host(`www.skyie.studio`) || Host(`app.skyie.studio`) || Host(`forge.skyie.studio`)"
       - "traefik.http.routers.skyie-studio.entrypoints=websecure"
       - "traefik.http.routers.skyie-studio.tls=true"
       - "traefik.http.services.skyie-studio.loadbalancer.server.port=3000"

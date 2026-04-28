@@ -39,6 +39,20 @@ export async function getHealth() {
   return data;
 }
 
+// ── Forge ────────────────────────────────────────────────────────────────────
+
+export interface ForgeStatus {
+  enabled: boolean;
+  user_id: string;
+  email: string;
+  credits: number;
+}
+
+export async function getForgeStatus() {
+  const { data } = await api.get<ForgeStatus>("/forge/status");
+  return data;
+}
+
 // ── GPU Status ─────────────────────────────────────────────────────────────
 
 export interface GpuStatus {
