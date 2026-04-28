@@ -1,0 +1,37 @@
+# Skyie Forge — RunPod Serverless GPU worker.
+#
+# These are the runtime deps for the FLUX-dev + PuLID + LoRA-loader
+# image. PyTorch and CUDA come from the base image (runpod/pytorch
+# 2.4.x); we only pin the inference + utility libraries.
+
+# RunPod serverless wrapper
+runpod==1.7.7
+
+# Diffusers stack (FLUX support landed in 0.30; pin known-good)
+diffusers==0.32.2
+transformers==4.46.3
+accelerate==1.1.1
+safetensors==0.4.5
+peft==0.13.2                # LoRA loading via PEFT adapter
+huggingface_hub==0.26.5
+sentencepiece==0.2.0        # T5 tokeniser (FLUX text encoder 2)
+protobuf>=4.25,<6
+
+# PuLID for FLUX — identity preservation from one reference photo
+einops==0.8.0
+timm==1.0.11
+
+# Face detection + embedding (PuLID dependency)
+insightface==0.7.3
+onnxruntime-gpu==1.20.1
+facexlib==0.3.0
+filterpy==1.4.5             # facexlib transitive
+opencv-python-headless==4.10.0.84
+
+# Image I/O + utility
+Pillow==11.0.0
+requests==2.32.3
+numpy<2                     # diffusers pinned to numpy<2
+
+# CLIP for PuLID (EVA-CLIP variant)
+open_clip_torch==2.29.0

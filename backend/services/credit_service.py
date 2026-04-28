@@ -28,6 +28,10 @@ CREDIT_COSTS: dict[str, int] = {
     "veo_multi_shot": 0,
     # Avatar pack — computed below as count × gemini_image base
     "avatar_pack": 0,
+    # Forge image (FLUX-dev on RunPod Serverless). Flat rate at vanilla
+    # text-to-image; LoRAs / PuLID don't move per-image GPU cost much.
+    # ~3-4s per image on 48 GB serverless ≈ $0.0014 of compute = ~3 credits.
+    "forge_image": 3,
 }
 
 # ── Veo 3.1 per-second credit rates ─────────────────────────────────────────

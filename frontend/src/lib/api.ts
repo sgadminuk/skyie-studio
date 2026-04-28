@@ -53,6 +53,32 @@ export async function getForgeStatus() {
   return data;
 }
 
+export interface ForgeLora {
+  url: string;
+  weight?: number;
+  name?: string;
+}
+
+export interface ForgeImageParams {
+  prompt: string;
+  negative_prompt?: string | null;
+  width?: number;
+  height?: number;
+  num_inference_steps?: number;
+  guidance_scale?: number;
+  seed?: number | null;
+  reference_image_url?: string | null;
+  id_weight?: number;
+  loras?: ForgeLora[];
+}
+
+export async function generateForgeImage(params: ForgeImageParams) {
+  const { data } = await api.post("/forge/generate/image", params, {
+    headers: { "Idempotency-Key": makeIdempotencyKey() },
+  });
+  return data as { job_id: string; credits_used: number; status: string };
+}
+
 // ── GPU Status ─────────────────────────────────────────────────────────────
 
 export interface GpuStatus {

@@ -19,7 +19,7 @@ import { useAuth } from "@/lib/auth";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", icon: Flame, exact: true },
-  { href: "/image", label: "Image", icon: ImagePlus, soon: true },
+  { href: "/image", label: "Image", icon: ImagePlus },
   { href: "/video", label: "Video", icon: Film, soon: true },
   { href: "/characters", label: "Characters", icon: Users, soon: true },
 ];

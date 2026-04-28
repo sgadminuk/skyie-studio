@@ -51,5 +51,10 @@ docker-compose.override.yml
 .playwright-mcp/
 .chrome-devtools-mcp/
 
-# Credentials / GPU server
-gpu-server/
+# GPU server — track only the serverless artefacts that RunPod's auto-build
+# needs to clone. The always-on-pod files (server.py, model_registry.py,
+# startup.sh, the original Dockerfile, credentials notes) stay out of git.
+gpu-server/*
+!gpu-server/Dockerfile.serverless
+!gpu-server/handler.py
+!gpu-server/requirements.serverless.txt

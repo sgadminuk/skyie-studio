@@ -80,6 +80,8 @@ services:
       MAIELR_API_KEY: ${MAIELR_API_KEY:-}
       MAIELR_WEBHOOK_SECRET: ${MAIELR_WEBHOOK_SECRET:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      RUNPOD_API_KEY: ${RUNPOD_API_KEY:-}
+      RUNPOD_FORGE_IMAGE_ENDPOINT_ID: ${RUNPOD_FORGE_IMAGE_ENDPOINT_ID:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -143,6 +145,8 @@ services:
       OUTPUT_PATH: /app/assets/generated
       GPU_API_KEY: ${GPU_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      RUNPOD_API_KEY: ${RUNPOD_API_KEY:-}
+      RUNPOD_FORGE_IMAGE_ENDPOINT_ID: ${RUNPOD_FORGE_IMAGE_ENDPOINT_ID:-}
     depends_on:
       postgres:
         condition: service_healthy

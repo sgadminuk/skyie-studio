@@ -345,6 +345,13 @@ def run_avatar_pack_task(self, job_id: str, params: dict):
     _run_workflow(job_id, params, execute_avatar_pack)
 
 
+@celery_app.task(name="skyie.run_forge_image", bind=True)
+def run_forge_image_task(self, job_id: str, params: dict):
+    """Generate one Forge image via the FLUX-dev RunPod Serverless endpoint."""
+    from workflows.forge_image import execute_forge_image
+    _run_workflow(job_id, params, execute_forge_image)
+
+
 @celery_app.task(name="skyie.run_veo_multi_shot", bind=True)
 def run_veo_multi_shot_task(self, job_id: str, params: dict):
     """Render N Veo 3.1 shots and stitch them into a single MP4."""

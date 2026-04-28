@@ -44,9 +44,10 @@ const WORKFLOW_LABELS: Record<string, string> = {
   gemini_video: "Veo 3.1 Video",
   veo_multi_shot: "Veo 3.1 Multi-Shot",
   avatar_pack: "AI Avatar Pack",
+  forge_image: "Forge Image (FLUX)",
 };
 
-const IMAGE_WORKFLOWS = new Set(["gemini_image", "gemini_image_edit"]);
+const IMAGE_WORKFLOWS = new Set(["gemini_image", "gemini_image_edit", "forge_image"]);
 
 const ERROR_CODE_MESSAGES: Record<string, { title: string; hint: string }> = {
   gemini_safety: {

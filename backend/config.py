@@ -96,6 +96,13 @@ class Settings(BaseSettings):
     GEMINI_BREAKER_WINDOW_SEC: int = 60
     GEMINI_BREAKER_COOLDOWN_SEC: int = 120
 
+    # Forge — RunPod Serverless GPU endpoints
+    RUNPOD_API_KEY: str = ""
+    RUNPOD_FORGE_IMAGE_ENDPOINT_ID: str = ""
+    RUNPOD_REQUEST_TIMEOUT: int = 300
+    RUNPOD_POLL_INTERVAL_SEC: int = 3
+    RUNPOD_MAX_POLL_ATTEMPTS: int = 120
+
     # Cloudflare R2
     R2_ACCOUNT_ID: str = ""
     R2_ACCESS_KEY_ID: str = ""
