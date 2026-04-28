@@ -36,17 +36,23 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Reclaim disk space
-        # Default GH runner only has ~14 GB free; FLUX-dev download alone
-        # exceeds that. Aggressively prune unused tooling so the docker
-        # build has room to bake weights.
-        run: |
-          df -h /
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android \
-                      /opt/ghc /opt/hostedtoolcache /usr/local/share/boost \
-                      "$AGENT_TOOLSDIRECTORY"
-          sudo apt-get clean
-          docker system prune -af || true
-          df -h /
+        # Default GH runner has ~25 GB free after pre-installed tooling.
+        # FLUX-dev download alone is 24 GB, plus ~6 GB for python deps and
+        # docker overlay. Need to claw back ~30+ GB before the build.
+        # The jlumbroso action frees ~32-37 GB by removing dotnet, android,
+        # haskell, large packages, and the hosted toolcache.
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false  # we still want Docker around
+          swap-storage: true
+
+      - name: Verify disk space
+        run: df -h /
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
