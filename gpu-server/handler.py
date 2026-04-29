@@ -48,22 +48,48 @@ logging.basicConfig(
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DTYPE = torch.bfloat16
 
+# ── Cache + token resolution ─────────────────────────────────────────────────
+# RunPod mounts the network volume at /runpod-volume. We piggyback on the
+# legacy pod's existing HuggingFace cache layout under
+# /runpod-volume/models/.hf_cache so any model already downloaded by the
+# always-on pod (Wan, LivePortrait, AudioLDM2, etc.) is reused for free,
+# and anything we download (FLUX) lands in the same place for next time.
+_VOLUME = Path("/runpod-volume")
+if _VOLUME.exists():
+    HF_CACHE_DIR = _VOLUME / "models" / ".hf_cache"
+else:
+    # Local dev / no-volume fallback
+    HF_CACHE_DIR = Path("/opt/hf-cache")
+HF_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+# Tell HF + transformers to use the volume-backed cache before any model
+# library actually inspects these env vars.
+os.environ["HF_HOME"] = str(HF_CACHE_DIR)
+os.environ["HF_HUB_CACHE"] = str(HF_CACHE_DIR / "hub")
+os.environ["TRANSFORMERS_CACHE"] = str(HF_CACHE_DIR / "hub")
+
+HF_TOKEN = os.environ.get("HF_TOKEN") or None
+
 # ── One-time pipeline boot (cold start) ──────────────────────────────────────
 
 
 def _load_pipeline():
     """Load FLUX.1-dev into VRAM once. Reused across every invocation while
-    the worker is warm.
+    the worker is warm. First-ever cold start downloads ~24 GB of FLUX-dev
+    weights to the network volume; subsequent workers reuse the cache.
     """
     from diffusers import FluxPipeline
 
-    cache_dir = os.environ.get("BUILD_HF_CACHE", "/opt/hf-cache")
-    logger.info("Loading FLUX.1-dev from cache_dir=%s on %s/%s", cache_dir, DEVICE, DTYPE)
+    logger.info(
+        "Loading FLUX.1-dev cache_dir=%s token=%s device=%s dtype=%s",
+        HF_CACHE_DIR, "set" if HF_TOKEN else "unset", DEVICE, DTYPE,
+    )
     t0 = time.time()
     pipe = FluxPipeline.from_pretrained(
         "black-forest-labs/FLUX.1-dev",
         torch_dtype=DTYPE,
-        cache_dir=cache_dir,
+        cache_dir=str(HF_CACHE_DIR / "hub"),
+        token=HF_TOKEN,
     )
     pipe.to(DEVICE)
     pipe.set_progress_bar_config(disable=True)
@@ -102,13 +128,12 @@ def _get_pulid():
     try:
         from pulid.pipeline_flux import PuLIDPipeline  # type: ignore
 
-        cache_dir = os.environ.get("BUILD_HF_CACHE", "/opt/hf-cache")
         logger.info("Loading PuLID-FLUX (lazy)...")
         _PULID = PuLIDPipeline(
             pipe=PIPE,
             device=DEVICE,
             weight_dtype=DTYPE,
-            cache_dir=cache_dir,
+            cache_dir=str(HF_CACHE_DIR / "hub"),
         )
         logger.info("PuLID ready")
         return _PULID

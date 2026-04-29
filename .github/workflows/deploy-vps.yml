@@ -87,6 +87,7 @@ jobs:
           GPU_REGISTRATION_KEY: ${{ secrets.GPU_REGISTRATION_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << ENDSSH
             set -e
@@ -108,6 +109,7 @@ jobs:
             grep -q "^GPU_REGISTRATION_KEY=" .env 2>/dev/null && sed -i "s|^GPU_REGISTRATION_KEY=.*|GPU_REGISTRATION_KEY=${GPU_REGISTRATION_KEY}|" .env || echo "GPU_REGISTRATION_KEY=${GPU_REGISTRATION_KEY}" >> .env
             grep -q "^GEMINI_API_KEY=" .env 2>/dev/null && sed -i "s|^GEMINI_API_KEY=.*|GEMINI_API_KEY=${GEMINI_API_KEY}|" .env || echo "GEMINI_API_KEY=${GEMINI_API_KEY}" >> .env
             grep -q "^RUNPOD_API_KEY=" .env 2>/dev/null && sed -i "s|^RUNPOD_API_KEY=.*|RUNPOD_API_KEY=${RUNPOD_API_KEY}|" .env || echo "RUNPOD_API_KEY=${RUNPOD_API_KEY}" >> .env
+            grep -q "^HF_TOKEN=" .env 2>/dev/null && sed -i "s|^HF_TOKEN=.*|HF_TOKEN=${HF_TOKEN}|" .env || echo "HF_TOKEN=${HF_TOKEN}" >> .env
 
             # Run deployment script
             echo "Running deployment..."
