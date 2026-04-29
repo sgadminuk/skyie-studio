@@ -18,8 +18,11 @@ class Settings(BaseSettings):
         "http://localhost:3000,"
         "http://localhost:3001,"
         "http://localhost:3002,"
+        "http://forge.localhost:3000,"
         "https://skyie.studio,"
-        "https://app.skyie.studio"
+        "https://www.skyie.studio,"
+        "https://app.skyie.studio,"
+        "https://forge.skyie.studio"
     )
 
     # Database
