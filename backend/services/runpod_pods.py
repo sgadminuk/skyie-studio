@@ -181,7 +181,7 @@ mutation Deploy($input: PodFindAndDeployOnDemandInput!) {
     volumeInGb
     volumeMountPath
     ports
-    env { key value }
+    env
     machine { gpuTypeId podHostId }
     runtime { uptimeInSeconds ports { ip isIpPublic privatePort publicPort type } }
   }
