@@ -72,14 +72,17 @@ export function ForgeShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <div className="ml-auto flex items-center gap-3 text-xs text-zinc-400">
-            <Link
-              href="/dashboard"
+            {/* Cross-subdomain link — use a plain <a> so Next doesn't try
+                to prefetch /dashboard on forge.skyie.studio (which 404s).
+                Routes the user to the Studio surface on app.skyie.studio. */}
+            <a
+              href="https://app.skyie.studio/"
               className="rounded-md border border-zinc-800 px-2.5 py-1 transition-colors hover:border-zinc-600 hover:text-zinc-200"
               title="Open Skyie Studio"
             >
               <Sparkles className="mr-1 inline h-3 w-3" />
               Studio
-            </Link>
+            </a>
             {user && (
               <>
                 <span className="hidden sm:inline tabular-nums">{user.email}</span>
