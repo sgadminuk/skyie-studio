@@ -14,10 +14,15 @@ Public surface:
 
 GPU fallback list (priority order — see live availability probe in
 EUR-IS-1, 2026-04-29):
-    RTX PRO 6000  (96 GB, $1.89/hr, Medium)   — primary
-    A100 SXM      (80 GB, $1.49/hr, Low)
-    H100 NVL      (94 GB, $3.07/hr, Low)
-    RTX 5090      (32 GB, $0.99/hr, Low)      — last resort, FLUX-only
+    RTX PRO 6000 Server      (96 GB, $1.89/hr)  — primary; the "RTX PRO 6000"
+                                                  tile on the dashboard maps
+                                                  to this SKU
+    RTX PRO 6000 Workstation (96 GB, $1.89/hr)  — same VRAM, different SKU
+    A100 SXM 80GB            (80 GB, $1.49/hr)  — strictly faster than the
+                                                  PCIe options above for FLUX
+                                                  (SXM bandwidth)
+    H100 NVL                 (94 GB, $3.07/hr)  — pricier but excellent
+    RTX 5090                 (32 GB, $0.99/hr)  — last resort, FLUX-only
 """
 from __future__ import annotations
 
@@ -59,7 +64,11 @@ class RunPodPodsCapacityError(RunPodPodsError):
 # ── Defaults — production EUR-IS-1 fallback chain ────────────────────────────
 
 # RunPod gpu type ids exactly as returned by `gpuTypes.id`. Order = priority.
+# Note: the dashboard's "RTX PRO 6000" pill maps to *Server Edition* — the
+# Workstation Edition is a separate, lower-stock SKU. Listing both means
+# we land on the Blackwell 96 GB tier whichever variant has stock today.
 DEFAULT_GPU_FALLBACK = [
+    "NVIDIA RTX PRO 6000 Blackwell Server Edition",
     "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
     "NVIDIA A100-SXM4-80GB",
     "NVIDIA H100 NVL",
