@@ -32,7 +32,11 @@ jobs:
     permissions:
       contents: read
       packages: write
-    timeout-minutes: 90  # 25 GB of FLUX weights baked at build time
+    # Bumped from 90 → 180. Self-hosted run still hit the 90 min cap during
+    # layer compression + ghcr.io push of the ~30 GB image. CPU-bound gzip
+    # on multiple large safetensors layers + 30 GB upload rate-limited by
+    # ghcr.io legitimately needs more wall time.
+    timeout-minutes: 180
 
     steps:
       - name: Checkout
@@ -75,7 +79,6 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix=sha-,format=short
 
       - name: Build and push
         uses: docker/build-push-action@v6
