@@ -102,9 +102,12 @@ class Settings(BaseSettings):
     # Forge — RunPod Serverless GPU endpoints
     RUNPOD_API_KEY: str = ""
     RUNPOD_FORGE_IMAGE_ENDPOINT_ID: str = ""
-    RUNPOD_REQUEST_TIMEOUT: int = 300
+    # First-ever cold start needs to download FLUX-dev (~24 GB, ~10 min) plus
+    # the usual GPU + image + handler init. Subsequent jobs land in seconds.
+    # 1800s covers worst-case + queue wait if all workers are busy.
+    RUNPOD_REQUEST_TIMEOUT: int = 1800
     RUNPOD_POLL_INTERVAL_SEC: int = 3
-    RUNPOD_MAX_POLL_ATTEMPTS: int = 120
+    RUNPOD_MAX_POLL_ATTEMPTS: int = 600
 
     # Cloudflare R2
     R2_ACCOUNT_ID: str = ""
