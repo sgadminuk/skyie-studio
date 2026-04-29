@@ -109,6 +109,24 @@ class Settings(BaseSettings):
     RUNPOD_POLL_INTERVAL_SEC: int = 3
     RUNPOD_MAX_POLL_ATTEMPTS: int = 600
 
+    # Forge — On-demand pods (shared, hourly billed)
+    # When a Forge user clicks Connect, we deploy ONE pod (or join an existing
+    # one) and serialize all jobs through it. Defaults map to the network
+    # volume created in EUR-IS-1 with FLUX cache populated.
+    FORGE_POD_IMAGE: str = "ghcr.io/sgadminuk/skyie-studio-forge:latest"
+    FORGE_POD_REGISTRY_AUTH_ID: str = ""  # RunPod containerRegistryAuthId for ghcr.io
+    FORGE_POD_DATACENTER: str = "EUR-IS-1"
+    FORGE_POD_VOLUME_ID: str = "7muboz2qp0"
+    # Comma-separated GPU type ids (priority order). Empty → use code default.
+    FORGE_POD_GPU_PRIORITY: str = ""
+    # Idle windows. Sessions disconnect after SESSION_IDLE_MIN of no
+    # activity; pods terminate after POD_IDLE_MIN of no active sessions.
+    FORGE_SESSION_IDLE_MIN: int = 10
+    FORGE_POD_IDLE_MIN: int = 5
+    # How long we wait for a freshly-deployed pod to phone home via
+    # /api/internal/gpu-register before declaring the deploy a failure.
+    FORGE_POD_REGISTER_TIMEOUT_SEC: int = 600
+
     # Cloudflare R2
     R2_ACCOUNT_ID: str = ""
     R2_ACCESS_KEY_ID: str = ""

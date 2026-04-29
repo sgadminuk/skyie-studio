@@ -1,11 +1,20 @@
-# Skyie Forge — RunPod Serverless GPU worker.
+# Skyie Forge — GPU worker (serves both modes).
 #
-# These are the runtime deps for the FLUX-dev + PuLID + LoRA-loader
-# image. PyTorch and CUDA come from the base image (runpod/pytorch
-# 2.4.x); we only pin the inference + utility libraries.
+# The same image boots two ways:
+#   - serverless mode: CMD = handler.py, RunPod queue dispatches jobs
+#   - on-demand mode:  CMD = serve.py, FastAPI shim self-registers with
+#                      the Skyie backend and accepts HTTP /run calls
+#
+# PyTorch and CUDA come from the base image (runpod/pytorch 2.4.x); we
+# only pin the inference + utility libraries.
 
-# RunPod serverless wrapper
+# RunPod serverless wrapper (kept so handler.py still works in serverless mode)
 runpod==1.7.7
+
+# FastAPI shim for on-demand pods (entrypoint = serve.py)
+fastapi==0.115.5
+uvicorn[standard]==0.32.0
+httpx==0.27.2
 
 # Diffusers stack (FLUX support landed in 0.30; pin known-good)
 diffusers==0.32.2

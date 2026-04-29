@@ -79,6 +79,58 @@ export async function generateForgeImage(params: ForgeImageParams) {
   return data as { job_id: string; credits_used: number; status: string };
 }
 
+// ── Forge on-demand pod (Connect / Disconnect / Heartbeat) ─────────────────
+
+export interface ForgePodInfo {
+  id: string;
+  runpod_pod_id: string;
+  status: "provisioning" | "ready" | "terminating" | "terminated" | "failed";
+  gpu_type_id: string | null;
+  datacenter: string | null;
+  cost_per_hr: number | null;
+  registered_url: string | null;
+  created_at: string | null;
+  ready_at: string | null;
+  uptime_seconds: number | null;
+  error: string | null;
+}
+
+export interface ForgeSessionInfo {
+  id: string;
+  status: "active" | "ended";
+  pod_id: string | null;
+  started_at: string | null;
+  last_activity_at: string | null;
+  ended_at: string | null;
+  end_reason: string | null;
+}
+
+export interface ForgePodState {
+  pod: ForgePodInfo | null;
+  session: ForgeSessionInfo | null;
+  active_session_count: number;
+}
+
+export async function forgePodConnect(): Promise<ForgePodState> {
+  const { data } = await api.post<ForgePodState>("/forge/pod/connect");
+  return data;
+}
+
+export async function forgePodStatus(): Promise<ForgePodState> {
+  const { data } = await api.get<ForgePodState>("/forge/pod/status");
+  return data;
+}
+
+export async function forgePodDisconnect(): Promise<ForgePodState> {
+  const { data } = await api.post<ForgePodState>("/forge/pod/disconnect");
+  return data;
+}
+
+export async function forgePodHeartbeat(): Promise<ForgePodState> {
+  const { data } = await api.post<ForgePodState>("/forge/pod/heartbeat");
+  return data;
+}
+
 // ── GPU Status ─────────────────────────────────────────────────────────────
 
 export interface GpuStatus {

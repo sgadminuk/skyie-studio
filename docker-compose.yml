@@ -82,6 +82,15 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       RUNPOD_API_KEY: ${RUNPOD_API_KEY:-}
       RUNPOD_FORGE_IMAGE_ENDPOINT_ID: ${RUNPOD_FORGE_IMAGE_ENDPOINT_ID:-}
+      # On-demand pod manager (Connect/Disconnect)
+      FORGE_POD_IMAGE: ${FORGE_POD_IMAGE:-ghcr.io/sgadminuk/skyie-studio-forge:latest}
+      FORGE_POD_REGISTRY_AUTH_ID: ${FORGE_POD_REGISTRY_AUTH_ID:-}
+      FORGE_POD_DATACENTER: ${FORGE_POD_DATACENTER:-EUR-IS-1}
+      FORGE_POD_VOLUME_ID: ${FORGE_POD_VOLUME_ID:-7muboz2qp0}
+      FORGE_POD_GPU_PRIORITY: ${FORGE_POD_GPU_PRIORITY:-}
+      FORGE_SESSION_IDLE_MIN: ${FORGE_SESSION_IDLE_MIN:-10}
+      FORGE_POD_IDLE_MIN: ${FORGE_POD_IDLE_MIN:-5}
+      HF_API_KEY: ${HF_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -130,7 +139,10 @@ services:
       dockerfile: Dockerfile
     container_name: skyie-studio-worker
     restart: always
-    command: celery -A services.job_queue:celery_app worker --loglevel=info --concurrency=1
+    # `-B` embeds Celery beat in the worker process. Safe at single-worker
+    # scale (the only scale we run); if we ever scale workers horizontally
+    # we'd split beat into its own service to avoid duplicate scheduling.
+    command: celery -A services.job_queue:celery_app worker --beat --loglevel=info --concurrency=1
     environment:
       PYTHONPATH: /app
       ENVIRONMENT: production
@@ -147,6 +159,15 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       RUNPOD_API_KEY: ${RUNPOD_API_KEY:-}
       RUNPOD_FORGE_IMAGE_ENDPOINT_ID: ${RUNPOD_FORGE_IMAGE_ENDPOINT_ID:-}
+      # On-demand pod manager (the reaper task lives in this worker)
+      FORGE_POD_IMAGE: ${FORGE_POD_IMAGE:-ghcr.io/sgadminuk/skyie-studio-forge:latest}
+      FORGE_POD_REGISTRY_AUTH_ID: ${FORGE_POD_REGISTRY_AUTH_ID:-}
+      FORGE_POD_DATACENTER: ${FORGE_POD_DATACENTER:-EUR-IS-1}
+      FORGE_POD_VOLUME_ID: ${FORGE_POD_VOLUME_ID:-7muboz2qp0}
+      FORGE_POD_GPU_PRIORITY: ${FORGE_POD_GPU_PRIORITY:-}
+      FORGE_SESSION_IDLE_MIN: ${FORGE_SESSION_IDLE_MIN:-10}
+      FORGE_POD_IDLE_MIN: ${FORGE_POD_IDLE_MIN:-5}
+      HF_API_KEY: ${HF_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy

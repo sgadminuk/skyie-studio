@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Sparkles, Image as ImageIcon } from "lucide-react";
-import { generateForgeImage } from "@/lib/api";
+import { Loader2, Sparkles, Image as ImageIcon, Power } from "lucide-react";
+import { generateForgeImage, forgePodStatus, type ForgePodState } from "@/lib/api";
 
 const ASPECT_PRESETS = [
   { label: "Square", w: 1024, h: 1024 },
@@ -24,6 +24,21 @@ export default function ForgeImagePage() {
   const [seed, setSeed] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [podState, setPodState] = useState<ForgePodState | null>(null);
+
+  // Mirror the pod control's status. Initial fetch + listen for the
+  // CustomEvent broadcast emitted on Connect/Disconnect/heartbeat.
+  useEffect(() => {
+    forgePodStatus().then(setPodState).catch(() => {});
+    const onState = (e: Event) => {
+      setPodState((e as CustomEvent<ForgePodState>).detail);
+    };
+    window.addEventListener("forge:pod-state", onState);
+    return () => window.removeEventListener("forge:pod-state", onState);
+  }, []);
+
+  const podReady =
+    podState?.pod?.status === "ready" && podState?.session?.status === "active";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -178,13 +193,27 @@ export default function ForgeImagePage() {
           </div>
         )}
 
+        {!podReady && (
+          <div className="rounded-md border border-amber-700/40 bg-amber-950/30 p-3 text-sm text-amber-200">
+            <div className="flex items-center gap-2 font-medium">
+              <Power className="h-4 w-4" /> No GPU connected
+            </div>
+            <p className="mt-1 text-xs text-amber-300/80">
+              Click <strong>Connect GPU</strong> in the header to spin up an
+              on-demand pod. Generation is billed by the second only while the
+              GPU is connected.
+            </p>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <p className="text-xs text-zinc-500">
-            ~3 credits per image · ~3-5s render · cold start adds ~30-60s on first call
+            ~3 credits per image · ~3-5s render · first job after Connect adds ~30s warm-up
           </p>
           <button
             type="submit"
-            disabled={!prompt.trim() || submitting}
+            disabled={!prompt.trim() || submitting || !podReady}
+            title={!podReady ? "Connect a GPU first" : undefined}
             className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? (

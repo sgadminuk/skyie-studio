@@ -1,12 +1,20 @@
 # syntax=docker/dockerfile:1.7
 # =============================================================================
-# Skyie Forge — RunPod Serverless GPU worker (slim, runtime-download model)
+# Skyie Forge — GPU worker image (slim, runtime-download model).
 #
-# Image is just python deps + handler (~3-4 GB). Models are downloaded to a
-# RunPod network volume mounted at /runpod-volume on first cold start, then
-# cached there for every subsequent worker. First request to a fresh model
-# pays a one-time ~10 min download cost; every request after is ~30s cold
-# start to first token.
+# One image, two runtime modes:
+#   - On-demand pod (default CMD): long-lived FastAPI server on :8888 that
+#     self-registers with the Skyie backend. Used by the Connect/Disconnect
+#     UX in Forge, billed by the second on RunPod for the lifetime of the
+#     pod.
+#   - RunPod Serverless: override the CMD to ["python", "-u",
+#     "/app/handler.py"] to fall back to RunPod's queue-based worker.
+#
+# Image is just python deps + handler + serve (~3-4 GB). Models are
+# downloaded to a RunPod network volume mounted at /runpod-volume on first
+# cold start and cached there for subsequent pods/workers. First request
+# to a fresh model pays a one-time ~10 min download cost; every request
+# after is ~30s cold start to first token.
 #
 # Why not bake: 30 GB image push to ghcr.io took 3+ hours and timed out.
 # Runtime download against a persistent volume is faster overall and lets
@@ -33,5 +41,11 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir hf_transfer
 
 COPY handler.py /app/handler.py
+COPY serve.py   /app/serve.py
 
-CMD ["python", "-u", "/app/handler.py"]
+# Default: on-demand pod mode — long-lived FastAPI server on :8888 that
+# self-registers with the Skyie backend and accepts /run calls. To run
+# in RunPod Serverless mode instead, override CMD when creating the
+# template:
+#   ["python", "-u", "/app/handler.py"]
+CMD ["python", "-u", "/app/serve.py"]

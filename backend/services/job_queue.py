@@ -46,6 +46,15 @@ celery_app.conf.update(
     worker_concurrency=1,  # Sequential — one GPU
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    beat_schedule={
+        # Forge on-demand pod reaper — expires idle UI sessions and
+        # terminates pods with no active users. Cheap (1 SQL UPDATE +
+        # 1 SELECT in steady state), safe to run every minute.
+        "forge-pod-reap": {
+            "task": "skyie.forge_pod_reap",
+            "schedule": 60.0,
+        },
+    },
 )
 
 # ── Redis (pub/sub + cache) ─────────────────────────────────────────────────
@@ -357,6 +366,12 @@ def run_veo_multi_shot_task(self, job_id: str, params: dict):
     """Render N Veo 3.1 shots and stitch them into a single MP4."""
     from workflows.veo_multi_shot import execute_veo_multi_shot
     _run_workflow(job_id, params, execute_veo_multi_shot)
+
+
+# Side-effect import: registers the `skyie.forge_pod_reap` Celery task with
+# the worker. The `beat_schedule` above references it by name; without this
+# import the worker would log "Received unregistered task" at every tick.
+import services.forge_pod_reaper  # noqa: E402, F401
 
 
 def _run_workflow(job_id: str, params: dict, workflow_fn):

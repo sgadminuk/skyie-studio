@@ -17,12 +17,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.dependencies import require_forge_user
 from db.base import get_session
 from db.models import User
+from services import forge_pod_manager
 from services.credit_service import check_credits, get_credit_cost, reserve_credits
 from services.job_queue import (
     create_job,
     find_job_by_idempotency_key,
     run_forge_image_task,
 )
+from services.runpod_pods import RunPodPodsCapacityError, RunPodPodsError
 
 router = APIRouter(prefix="/api/v1/forge", tags=["forge"])
 
@@ -67,10 +69,31 @@ async def generate_forge_image(
     user: User = Depends(require_forge_user),
     session: AsyncSession = Depends(get_session),
 ):
-    """Generate one image via FLUX-dev on RunPod Serverless. Identity-
-    preservation (PuLID) kicks in if `reference_image_url` is set; LoRAs
-    fuse on top regardless.
+    """Generate one image via FLUX-dev on the user's connected on-demand pod.
+
+    Requires a `ready` ForgeSession (clicked Connect) tied to a `ready` pod.
+    Identity-preservation (PuLID) kicks in if `reference_image_url` is set;
+    LoRAs fuse on top regardless.
     """
+    # Gate on connected GPU. Without this, jobs queue forever waiting for a
+    # worker that doesn't exist.
+    state = await forge_pod_manager.status(session, user.id)
+    pod = state.get("pod")
+    sess = state.get("session")
+    if not sess or sess.get("status") != "active":
+        raise HTTPException(
+            status_code=412,
+            detail="Connect a GPU first — click Connect in the Forge header.",
+        )
+    if not pod or pod.get("status") != "ready":
+        raise HTTPException(
+            status_code=412,
+            detail=(
+                "GPU is still warming up. Wait for the pill to turn green then retry."
+                if pod else "No GPU connected — click Connect."
+            ),
+        )
+
     if idempotency_key:
         existing = find_job_by_idempotency_key(str(user.id), idempotency_key)
         if existing:
@@ -109,3 +132,58 @@ async def generate_forge_image(
         "status": "queued",
         "credits_used": cost,
     }
+
+
+# ── Pod lifecycle: Connect / Status / Disconnect / Heartbeat ────────────────
+
+
+@router.post("/pod/connect")
+async def pod_connect(
+    user: User = Depends(require_forge_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Idempotent. Joins an existing pod if one is healthy, or spins up a
+    new on-demand pod (RunPod GraphQL `podFindAndDeployOnDemand`) and creates
+    a session row tied to it. UI shows a provisioning spinner until the pod
+    self-registers.
+    """
+    try:
+        return await forge_pod_manager.connect(session, user.id)
+    except RunPodPodsCapacityError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"All preferred GPU types are out of stock. {e}",
+        )
+    except RunPodPodsError as e:
+        raise HTTPException(status_code=502, detail=f"Pod deploy failed: {e}")
+
+
+@router.get("/pod/status")
+async def pod_status(
+    user: User = Depends(require_forge_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Lightweight poll target for the Forge UI. Safe to call every few
+    seconds while the pod is provisioning."""
+    return await forge_pod_manager.status(session, user.id)
+
+
+@router.post("/pod/disconnect")
+async def pod_disconnect(
+    user: User = Depends(require_forge_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """End the user's session. The pod stays alive until no sessions remain
+    (so other users on the same shared pod aren't dropped); the reaper
+    terminates it after FORGE_POD_IDLE_MIN of being empty."""
+    return await forge_pod_manager.disconnect(session, user.id)
+
+
+@router.post("/pod/heartbeat")
+async def pod_heartbeat(
+    user: User = Depends(require_forge_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Bump session activity to defer the idle-session reaper. The frontend
+    pings this every ~30s while the tab is visible."""
+    return await forge_pod_manager.heartbeat(session, user.id)

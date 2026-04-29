@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Flame, Sparkles, ImagePlus, Film, Users, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
+import { ForgePodControl } from "@/components/forge-pod-control";
 
 /**
  * ForgeShell — chrome for the gated open-weights platform.
@@ -72,6 +73,7 @@ export function ForgeShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <div className="ml-auto flex items-center gap-3 text-xs text-zinc-400">
+            <ForgePodControl />
             {/* Cross-subdomain link — use a plain <a> so Next doesn't try
                 to prefetch /dashboard on forge.skyie.studio (which 404s).
                 Routes the user to the Studio surface on app.skyie.studio. */}

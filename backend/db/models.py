@@ -326,3 +326,69 @@ class WebhookEndpoint(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class ForgePod(Base):
+    """An on-demand RunPod GPU pod that backs Skyie Forge.
+
+    Account-wide (not user-scoped): a single pod serves every connected
+    Forge session, since FLUX-dev fits comfortably in 96 GB VRAM and jobs
+    serialize through one diffusers pipeline. The reaper terminates a pod
+    once its last session disconnects and it has been idle past the
+    grace window.
+
+    Status lifecycle:
+      provisioning → ready → terminating → terminated
+                  ↘ failed (deploy or registration failed)
+    """
+
+    __tablename__ = "forge_pods"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    runpod_pod_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    gpu_type_id: Mapped[Optional[str]] = mapped_column(String(128))
+    datacenter: Mapped[Optional[str]] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="provisioning", index=True)
+    registered_url: Mapped[Optional[str]] = mapped_column(String(512))
+    cost_per_hr: Mapped[Optional[float]] = mapped_column(Float)
+    error: Mapped[Optional[str]] = mapped_column(Text)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+    ready_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    last_job_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    terminated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+
+class ForgeSession(Base):
+    """One row per "Connect GPU" click in the Forge UI.
+
+    Multiple sessions can share the same pod. The reaper closes a session
+    when its `last_activity_at` exceeds the idle window; explicit
+    Disconnect closes it immediately. Pod termination follows session
+    termination via a separate idle window.
+    """
+
+    __tablename__ = "forge_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    pod_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("forge_pods.id", ondelete="SET NULL"), index=True
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active", index=True)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    last_activity_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    end_reason: Mapped[Optional[str]] = mapped_column(String(64))
