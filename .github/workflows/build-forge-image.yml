@@ -25,7 +25,10 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    # Self-hosted runner on the Contabo VPS — has 317 GB free disk and fast
+    # network. Tagged with the unique `forge-builder` label so only this
+    # workflow uses it; CI / Deploy to VPS keep using GitHub-hosted runners.
+    runs-on: [self-hosted, forge-builder]
     permissions:
       contents: read
       packages: write
@@ -35,38 +38,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Reclaim disk space on /
-        # ~32-37 GB freed by removing dotnet/android/haskell/toolcache.
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          tool-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false
-          swap-storage: true
-
-      - name: Move Docker root to /mnt
-        # GH runners have a 14 GB / and a separate 75 GB /mnt that goes
-        # mostly unused. Point Docker's data-root at /mnt so build layers
-        # (including the 24 GB FLUX-dev cache) have room to breathe.
+      - name: Verify disk space
+        # Self-hosted runner on Contabo VPS — should have 200+ GB free.
+        # If <80 GB free, fail fast rather than blow up mid-FLUX-download.
         run: |
-          set -e
-          echo "Before move:"
-          df -h / /mnt
-          sudo systemctl stop docker docker.socket
-          sudo mkdir -p /mnt/docker
-          sudo rsync -aH /var/lib/docker/ /mnt/docker/ 2>/dev/null || true
-          sudo rm -rf /var/lib/docker
-          sudo mkdir -p /etc/docker
-          echo '{"data-root": "/mnt/docker"}' | sudo tee /etc/docker/daemon.json
-          sudo systemctl start docker
-          # Reset Buildx so it uses the new docker root for its container.
-          docker buildx ls || true
-          echo "After move:"
-          df -h / /mnt
-          docker info | grep -i "Docker Root Dir"
+          df -h /
+          FREE_GB=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+          if [ "$FREE_GB" -lt 80 ]; then
+            echo "Insufficient free disk: ${FREE_GB} GB. Need ~80 GB for FLUX bake."
+            exit 1
+          fi
+          echo "Free disk: ${FREE_GB} GB — OK"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
