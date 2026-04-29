@@ -238,12 +238,19 @@ async def deploy_pod(
     ports: str = DEFAULT_PORTS,
     env: dict[str, str] | None = None,
     registry_auth_id: str | None = None,
+    docker_args: str = "python -u /app/serve.py",
     cloud_type: str = "SECURE",
 ) -> PodInfo:
     """Find and deploy an on-demand pod.
 
     Iterates `gpu_type_ids` in order — the first GPU with stock wins. Raises
     RunPodPodsCapacityError if every type is out of stock.
+
+    `docker_args` is passed verbatim to the pod's `dockerArgs` field. RunPod
+    has historically been unreliable about honoring an image's default CMD
+    when the field is omitted — the container can stay in a "RUNNING but
+    not running" limbo with `runtime=null` indefinitely. Passing the
+    command explicitly avoids this.
     """
     gpu_list = gpu_type_ids or DEFAULT_GPU_FALLBACK
     env_list = [{"key": k, "value": v} for k, v in (env or {}).items()]
@@ -265,6 +272,7 @@ async def deploy_pod(
             "networkVolumeId": volume_id,
             "dataCenterId": datacenter,
             "env": env_list,
+            "dockerArgs": docker_args,
             "supportPublicIp": True,
         }
         if registry_auth_id:
