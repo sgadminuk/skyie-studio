@@ -1,17 +1,13 @@
-# Skyie Forge — GPU worker (serves both modes).
+# Skyie Forge — On-demand pod runtime dependencies.
 #
-# The same image boots two ways:
-#   - serverless mode: CMD = handler.py, RunPod queue dispatches jobs
-#   - on-demand mode:  CMD = serve.py, FastAPI shim self-registers with
-#                      the Skyie backend and accepts HTTP /run calls
+# This file lives on the network volume at /runpod-volume/forge-app/.
+# The first pod to boot on a fresh volume creates a venv and pip-installs
+# this list (~3 minutes). Every subsequent pod reuses the same venv.
 #
-# PyTorch and CUDA come from the base image (runpod/pytorch 2.4.x); we
-# only pin the inference + utility libraries.
+# We do NOT include CUDA/PyTorch here — those come from the runpod/pytorch
+# base image. We pin the inference + utility libraries on top.
 
-# RunPod serverless wrapper (kept so handler.py still works in serverless mode)
-runpod==1.7.7
-
-# FastAPI shim for on-demand pods (entrypoint = serve.py)
+# FastAPI shim (serve.py runs uvicorn) + outbound HTTP for self-registration
 fastapi==0.115.5
 uvicorn[standard]==0.32.0
 httpx==0.27.2
@@ -25,6 +21,7 @@ peft==0.13.2                # LoRA loading via PEFT adapter
 huggingface_hub==0.26.5
 sentencepiece==0.2.0        # T5 tokeniser (FLUX text encoder 2)
 protobuf>=4.25,<6
+hf_transfer                 # parallel downloads (HF_HUB_ENABLE_HF_TRANSFER=1)
 
 # PuLID for FLUX — identity preservation from one reference photo
 einops==0.8.0

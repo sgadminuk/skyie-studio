@@ -111,10 +111,10 @@ class Settings(BaseSettings):
 
     # Forge — On-demand pods (shared, hourly billed)
     # When a Forge user clicks Connect, we deploy ONE pod (or join an existing
-    # one) and serialize all jobs through it. Defaults map to the network
-    # volume created in EUR-IS-1 with FLUX cache populated.
-    FORGE_POD_IMAGE: str = "ghcr.io/sgadminuk/skyie-studio-forge:latest"
-    FORGE_POD_REGISTRY_AUTH_ID: str = ""  # RunPod containerRegistryAuthId for ghcr.io
+    # one) and serialize all jobs through it. Pods boot RunPod's public
+    # PyTorch base image and run our app from /runpod-volume/forge-app/
+    # (which is pre-staged by gpu-server/bootstrap-volume.sh).
+    FORGE_POD_IMAGE: str = "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"
     FORGE_POD_DATACENTER: str = "EUR-IS-1"
     FORGE_POD_VOLUME_ID: str = "7muboz2qp0"
     # Comma-separated GPU type ids (priority order). Empty → use code default.

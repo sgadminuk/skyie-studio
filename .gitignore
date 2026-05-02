@@ -51,11 +51,19 @@ docker-compose.override.yml
 .playwright-mcp/
 .chrome-devtools-mcp/
 
-# GPU server — track only the artefacts the GHA build copies into the
-# Forge image. The always-on-pod files (server.py, model_registry.py,
-# startup.sh, the original Dockerfile, credentials notes) stay out of git.
+# GPU server — track only the artefacts that need to be in version control.
+#
+# Forge on-demand pod boot uses the volume-bootstrap pattern: the four
+# files below are scp'd onto the network volume by bootstrap-volume.sh
+# (which itself runs from a developer's laptop, never the VPS). The
+# legacy always-on pod's startup.sh is kept tracked too because it pre-
+# dates this work and is referenced by /workspace/config/ on RunPod.
+# Everything else (server.py, model_registry.py, credentials notes,
+# the original Dockerfile) stays untracked.
 gpu-server/*
-!gpu-server/Dockerfile.serverless
 !gpu-server/handler.py
 !gpu-server/serve.py
-!gpu-server/requirements.serverless.txt
+!gpu-server/startup.sh
+!gpu-server/forge-startup.sh
+!gpu-server/forge-requirements.txt
+!gpu-server/bootstrap-volume.sh

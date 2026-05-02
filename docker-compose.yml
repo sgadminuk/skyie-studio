@@ -83,8 +83,10 @@ services:
       RUNPOD_API_KEY: ${RUNPOD_API_KEY:-}
       RUNPOD_FORGE_IMAGE_ENDPOINT_ID: ${RUNPOD_FORGE_IMAGE_ENDPOINT_ID:-}
       # On-demand pod manager (Connect/Disconnect)
-      FORGE_POD_IMAGE: ${FORGE_POD_IMAGE:-ghcr.io/sgadminuk/skyie-studio-forge:latest}
-      FORGE_POD_REGISTRY_AUTH_ID: ${FORGE_POD_REGISTRY_AUTH_ID:-}
+      # Image is RunPod's public PyTorch base — pulls in seconds. Our app
+      # code lives on the network volume at /runpod-volume/forge-app/,
+      # populated via gpu-server/bootstrap-volume.sh.
+      FORGE_POD_IMAGE: ${FORGE_POD_IMAGE:-runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04}
       FORGE_POD_DATACENTER: ${FORGE_POD_DATACENTER:-EUR-IS-1}
       FORGE_POD_VOLUME_ID: ${FORGE_POD_VOLUME_ID:-7muboz2qp0}
       FORGE_POD_GPU_PRIORITY: ${FORGE_POD_GPU_PRIORITY:-}
@@ -160,8 +162,7 @@ services:
       RUNPOD_API_KEY: ${RUNPOD_API_KEY:-}
       RUNPOD_FORGE_IMAGE_ENDPOINT_ID: ${RUNPOD_FORGE_IMAGE_ENDPOINT_ID:-}
       # On-demand pod manager (the reaper task lives in this worker)
-      FORGE_POD_IMAGE: ${FORGE_POD_IMAGE:-ghcr.io/sgadminuk/skyie-studio-forge:latest}
-      FORGE_POD_REGISTRY_AUTH_ID: ${FORGE_POD_REGISTRY_AUTH_ID:-}
+      FORGE_POD_IMAGE: ${FORGE_POD_IMAGE:-runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04}
       FORGE_POD_DATACENTER: ${FORGE_POD_DATACENTER:-EUR-IS-1}
       FORGE_POD_VOLUME_ID: ${FORGE_POD_VOLUME_ID:-7muboz2qp0}
       FORGE_POD_GPU_PRIORITY: ${FORGE_POD_GPU_PRIORITY:-}

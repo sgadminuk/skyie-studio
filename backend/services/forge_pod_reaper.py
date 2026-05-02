@@ -9,7 +9,8 @@ Runs every 60s. Two responsibilities:
 
 Sync version of the logic in `forge_pod_manager.reap` so it runs cleanly
 inside Celery workers without an event loop. Pod termination calls go to
-RunPod GraphQL via a small sync wrapper.
+RunPod's REST API via a small sync wrapper (matches `runpod_pods.py`'s
+own deploy/terminate flow).
 """
 from __future__ import annotations
 
@@ -23,7 +24,7 @@ from sqlalchemy.orm import Session
 from config import settings
 from db.models import ForgePod, ForgeSession
 from services.job_queue import _sync_engine, celery_app, redis_client
-from services.runpod_pods import GRAPHQL_URL, _TERMINATE_MUTATION
+from services.runpod_pods import REST_BASE
 
 logger = logging.getLogger(__name__)
 
@@ -31,31 +32,25 @@ GPU_REDIS_PREFIX = "skyie:gpu:"
 
 
 def _terminate_pod_sync(pod_id: str) -> None:
-    """Sync terminate via RunPod GraphQL. Idempotent — already-gone pods
-    are treated as a successful no-op."""
+    """Sync terminate via RunPod REST `DELETE /v1/pods/{id}`.
+
+    Idempotent — 404 (already gone) and similar are treated as no-op.
+    """
     if not pod_id or not settings.RUNPOD_API_KEY:
         return
-    url = f"{GRAPHQL_URL}?api_key={settings.RUNPOD_API_KEY}"
-    body = {
-        "query": _TERMINATE_MUTATION,
-        "variables": {"input": {"podId": pod_id}},
+    url = f"{REST_BASE}/pods/{pod_id}"
+    headers = {
+        "Authorization": f"Bearer {settings.RUNPOD_API_KEY}",
+        "User-Agent": "skyie-forge-pod-reaper/2.0",
     }
     try:
         with httpx.Client(timeout=30.0) as client:
-            r = client.post(
-                url, json=body,
-                headers={"User-Agent": "skyie-forge-pod-reaper/1.0"},
-            )
-        if r.status_code == 200:
-            payload = r.json()
-            errs = payload.get("errors") or []
-            if errs:
-                msg = "; ".join(e.get("message", "") for e in errs).lower()
-                if "not found" in msg or "already" in msg:
-                    return
-                logger.warning("Reaper: terminate %s returned errors: %s", pod_id, errs)
-                return
+            r = client.delete(url, headers=headers)
+        if r.status_code in (200, 204):
             logger.info("Reaper terminated pod %s", pod_id)
+        elif r.status_code == 404:
+            # Already gone — nothing to do.
+            return
         else:
             logger.warning("Reaper: terminate %s HTTP %d: %s", pod_id, r.status_code, r.text[:200])
     except Exception as e:

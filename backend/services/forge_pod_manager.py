@@ -155,7 +155,6 @@ async def _deploy_new_pod(db: AsyncSession) -> ForgePod:
         datacenter=settings.FORGE_POD_DATACENTER,
         volume_id=settings.FORGE_POD_VOLUME_ID,
         env=env,
-        registry_auth_id=settings.FORGE_POD_REGISTRY_AUTH_ID or None,
     )
 
     pod = ForgePod(
