@@ -84,7 +84,7 @@ deploy_payload() {
   "env": {"PUBLIC_KEY": $(printf '%s' "${PUBLIC_KEY}" | python3 -c "import json,sys; print(json.dumps(sys.stdin.read()))")},
   "dockerStartCmd": [
     "sh", "-c",
-    "apk add --no-cache openssh-server openssh-client >/dev/null && ssh-keygen -A && mkdir -p /root/.ssh && printf '%s\n' \"\$PUBLIC_KEY\" > /root/.ssh/authorized_keys && chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys && /usr/sbin/sshd -D -e"
+    "apk add --no-cache openssh-server openssh-client >/dev/null && ssh-keygen -A && mkdir -p /root/.ssh && echo \"\$PUBLIC_KEY\" > /root/.ssh/authorized_keys && chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys && /usr/sbin/sshd -D -e"
   ]
 }
 JSON
@@ -121,37 +121,70 @@ cleanup_pod() {
 trap cleanup_pod EXIT
 
 # ── Wait for the pod's public SSH endpoint to come up ────────────────────────
-# Pod starts → image pulls (alpine ~5 MB, fast) → dockerStartCmd installs
-# sshd and starts it → public port shows up in /v1/pods/<id>. Poll.
-echo "[bootstrap] waiting for pod sshd (up to 4 min)..."
+# RunPod's REST exposes the pod's SSH endpoint via top-level `publicIp` +
+# `portMappings: {"22": <external_port>}`. These appear within seconds of
+# deploy, before the `runtime` field is populated. We poll for them, then
+# poll the SSH banner separately to confirm sshd is actually listening
+# (alpine's dockerStartCmd needs to apk-install openssh-server before that
+# happens, ~10-30s).
+echo "[bootstrap] waiting for pod public IP/port..."
 PUBLIC_IP=""; PUBLIC_PORT=""
-for i in $(seq 1 48); do
+LAST_RAW=""
+for i in $(seq 1 24); do
     sleep 5
     RESP="$(curl -sS \
         -H "Authorization: Bearer ${RUNPOD_API_KEY}" \
         -H "User-Agent: skyie-forge-bootstrap/1.0" \
         "https://rest.runpod.io/v1/pods/${POD_ID}")"
-    eval "$(printf '%s' "${RESP}" | python3 -c "
+    LAST_RAW="${RESP}"
+    eval "$(printf '%s' "${RESP}" | python3 -c '
 import json, sys
-d = json.load(sys.stdin)
-ports = (d.get('runtime') or {}).get('ports') or d.get('portMappings') or []
-for p in ports:
-    if (p.get('privatePort') == 22 or p.get('internalPort') == 22) and p.get('isIpPublic'):
-        print('PUBLIC_IP=' + str(p.get('ip','')))
-        print('PUBLIC_PORT=' + str(p.get('publicPort') or p.get('externalPort','')))
-        break
-")"
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+ip = d.get("publicIp") or ""
+pm = d.get("portMappings") or {}
+port = ""
+if isinstance(pm, dict):
+    p = pm.get("22") or pm.get(22)
+    if p:
+        port = str(p)
+elif isinstance(pm, list):
+    for x in pm:
+        if isinstance(x, dict) and x.get("privatePort") == 22:
+            port = str(x.get("publicPort") or "")
+            break
+if ip and port:
+    print("PUBLIC_IP=" + ip)
+    print("PUBLIC_PORT=" + port)
+')"
     if [ -n "${PUBLIC_IP}" ] && [ -n "${PUBLIC_PORT}" ]; then
-        echo "[bootstrap] pod ssh endpoint: ${PUBLIC_IP}:${PUBLIC_PORT}"
+        echo "[bootstrap] pod endpoint: ${PUBLIC_IP}:${PUBLIC_PORT}"
         break
     fi
-    [ $((i % 6)) -eq 0 ] && echo "[bootstrap] still waiting... (${i}/48)"
+    [ $((i % 6)) -eq 0 ] && echo "[bootstrap] still waiting on publicIp/port (${i}/24)..."
 done
 
 if [ -z "${PUBLIC_IP}" ] || [ -z "${PUBLIC_PORT}" ]; then
-    echo "ERROR: pod never exposed public SSH endpoint" >&2
+    echo "ERROR: pod never published publicIp+portMappings" >&2
+    echo "Last response (truncated):" >&2
+    echo "${LAST_RAW}" | head -c 1500 >&2
+    echo >&2
     exit 1
 fi
+
+# Wait for sshd to actually accept connections. Polls TCP/22 with nc, since
+# alpine still has to apk add openssh-server inside dockerStartCmd.
+echo "[bootstrap] waiting for sshd to accept connections..."
+for i in $(seq 1 60); do
+    if (echo > /dev/tcp/${PUBLIC_IP}/${PUBLIC_PORT}) 2>/dev/null; then
+        echo "[bootstrap] sshd ready"
+        break
+    fi
+    [ $((i % 6)) -eq 0 ] && echo "[bootstrap] still waiting on sshd (${i}/60)..."
+    sleep 5
+done
 
 # Give sshd a few extra seconds to actually accept connections
 sleep 5
@@ -162,7 +195,7 @@ SSH_OPTS=(
     -o "UserKnownHostsFile=/dev/null"
     -o "ConnectTimeout=15"
     -o "LogLevel=ERROR"
-    -p "${PUBLIC_PORT}"
+    -o "Port=${PUBLIC_PORT}"
 )
 
 # ── Push the four files ──────────────────────────────────────────────────────
