@@ -86,9 +86,20 @@ echo "Checking Frontend..."
 check_container_health "skyie-studio-frontend" 90 || exit 1
 
 # ── Run migrations ────────────────────────────────────────────────────────
+# Migrations MUST succeed. The previous version of this script swallowed
+# failures with `|| echo warning` and once silently shipped a deploy where
+# the new code referenced a column the DB didn't have — broke login until
+# a manual upgrade was run. We now fail the deploy if alembic fails.
 
 echo "Running database migrations..."
-docker exec skyie-studio-backend alembic upgrade head || echo "Migration warning (may already be at head)"
+if ! docker exec skyie-studio-backend alembic upgrade head; then
+    echo "FATAL: alembic upgrade head failed. Deploy aborting." >&2
+    echo "  Diagnose with: docker exec skyie-studio-backend alembic current" >&2
+    echo "  Available heads: docker exec skyie-studio-backend alembic heads" >&2
+    exit 1
+fi
+echo "Migrations applied. Current revision:"
+docker exec skyie-studio-backend alembic current
 
 # ── Verify endpoints ─────────────────────────────────────────────────────
 
