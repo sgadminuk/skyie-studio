@@ -2,27 +2,38 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Flame, Sparkles, ImagePlus, Film, Users, LogOut } from "lucide-react";
+import {
+  Flame,
+  Sparkles,
+  Home,
+  ImagePlus,
+  Film,
+  Users,
+  Scissors,
+  LogOut,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
-import { ForgePodControl } from "@/components/forge-pod-control";
+import { ForgePodStatusPill } from "@/components/forge-pod-status-pill";
 
 /**
  * ForgeShell — chrome for the gated open-weights platform.
  *
- * Distinct visual identity from Studio:
+ * Visual identity vs Studio:
  *   - amber/orange accent (Studio is signal-blue) so users always know
  *     which engine they're driving
- *   - condensed top nav rather than the wide sidebar — Forge has fewer
- *     workflows than Studio does and the surface is meant to feel raw
- *   - "FORGE" wordmark, not "Skyie"
+ *   - condensed top nav; full-width hero on home page
+ *   - Compact GPU status pill in the header — Connect itself lives on
+ *     the home-page hero (intentional UX bet: the action is too important
+ *     to bury in a top-right chip).
  */
 
 const NAV_ITEMS = [
-  { href: "/", label: "Home", icon: Flame, exact: true },
+  { href: "/", label: "Home", icon: Home, exact: true },
   { href: "/image", label: "Image", icon: ImagePlus },
-  { href: "/video", label: "Video", icon: Film, soon: true },
   { href: "/characters", label: "Characters", icon: Users, soon: true },
+  { href: "/video", label: "Video", icon: Film, soon: true },
+  { href: "/edit", label: "Edit", icon: Scissors, soon: true },
 ];
 
 export function ForgeShell({ children }: { children: React.ReactNode }) {
@@ -39,16 +50,24 @@ export function ForgeShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <header className="sticky top-0 z-30 border-b border-zinc-800/70 bg-zinc-950/85 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
-          <Link href="/" className="flex items-center gap-2 font-bold tracking-tight">
-            <Flame className="h-5 w-5 text-amber-500" strokeWidth={2.5} />
-            <span className="text-sm uppercase tracking-[0.2em] text-amber-500">Forge</span>
+        <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-3">
+          <Link
+            href="/"
+            className="flex items-center gap-2 font-bold tracking-tight"
+          >
+            <Flame
+              className="h-5 w-5 text-amber-500"
+              strokeWidth={2.5}
+            />
+            <span className="text-sm uppercase tracking-[0.2em] text-amber-500">
+              Forge
+            </span>
           </Link>
-          <nav className="ml-2 flex items-center gap-1 text-sm">
+          <nav className="ml-2 hidden items-center gap-0.5 text-sm md:flex">
             {NAV_ITEMS.map(({ href, label, icon: Icon, exact, soon }) => {
               const active = matches(href, exact ?? false);
               const className = cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors",
+                "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 transition-colors",
                 soon
                   ? "cursor-not-allowed text-zinc-600"
                   : active
@@ -57,10 +76,16 @@ export function ForgeShell({ children }: { children: React.ReactNode }) {
               );
               if (soon) {
                 return (
-                  <span key={href} className={className} title="Coming soon">
+                  <span
+                    key={href}
+                    className={className}
+                    title={`${label} — coming soon`}
+                  >
                     <Icon className="h-3.5 w-3.5" />
                     {label}
-                    <span className="ml-1 rounded bg-zinc-800 px-1 text-[9px] uppercase tracking-wider text-zinc-500">soon</span>
+                    <span className="ml-0.5 rounded bg-zinc-800 px-1 text-[9px] uppercase tracking-wider text-zinc-500">
+                      soon
+                    </span>
                   </span>
                 );
               }
@@ -72,22 +97,23 @@ export function ForgeShell({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
-          <div className="ml-auto flex items-center gap-3 text-xs text-zinc-400">
-            <ForgePodControl />
-            {/* Cross-subdomain link — use a plain <a> so Next doesn't try
-                to prefetch /dashboard on forge.skyie.studio (which 404s).
-                Routes the user to the Studio surface on app.skyie.studio. */}
+          <div className="ml-auto flex items-center gap-2 text-xs text-zinc-400">
+            <ForgePodStatusPill />
+            {/* Cross-subdomain link — plain <a> so Next doesn't prefetch
+                /dashboard on forge.skyie.studio (which 404s). */}
             <a
               href="https://app.skyie.studio/"
-              className="rounded-md border border-zinc-800 px-2.5 py-1 transition-colors hover:border-zinc-600 hover:text-zinc-200"
+              className="hidden items-center gap-1 rounded-md border border-zinc-800 px-2 py-1 text-[11px] transition-colors hover:border-zinc-600 hover:text-zinc-200 sm:inline-flex"
               title="Open Skyie Studio"
             >
-              <Sparkles className="mr-1 inline h-3 w-3" />
+              <Sparkles className="h-3 w-3" />
               Studio
             </a>
             {user && (
               <>
-                <span className="hidden sm:inline tabular-nums">{user.email}</span>
+                <span className="hidden text-[11px] tabular-nums lg:inline">
+                  {user.email}
+                </span>
                 <button
                   type="button"
                   onClick={logout}
