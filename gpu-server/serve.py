@@ -35,8 +35,11 @@ import uvicorn
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
-# Side-effect import: this triggers `_load_pipeline()` at module load,
-# so by the time we serve our first request FLUX is already warm.
+# Import the handler module. NOTE: handler.py used to load FLUX at module
+# top-level, but that bricked the serverless path (couldn't reach
+# runpod.serverless.start before the worker boot timeout). It now lazy-
+# loads via _get_pipe(). For on-demand pods we eager-load FLUX in our
+# lifespan() function BEFORE registering with the backend — see below.
 import handler as _handler_module
 from handler import handler as _handler_fn
 
@@ -141,14 +144,47 @@ _started_at = time.time()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: do the first registration synchronously so the user's
-    Connect call doesn't see "ready" before the backend has the URL.
-    Then kick off the heartbeat task. On shutdown we just let the task
-    cancel — RunPod tears down the container.
+    """Startup sequence:
+      1. EAGER-LOAD FLUX into VRAM. This blocks the green pill in Forge
+         until the pipeline is fully warm, so when the user sees
+         "Connected" they can generate in ~5s — not get a 10-min
+         download surprise on their first prompt.
+         (handler module-level kept `PIPE = None` for the serverless
+         flavour; here we explicitly force the load.)
+      2. POST to /api/internal/gpu-register so the backend learns our URL
+         and marks the pod ready. Synchronous so a status poll right
+         after Connect doesn't briefly see "registered but not warm".
+      3. Kick off the heartbeat task so RunPod's idle reaper sees us.
+
+    On shutdown we just let the heartbeat task cancel — RunPod tears
+    down the container.
     """
+    # 1. Eager FLUX load. ~30s warm cache / ~10 min cold cache.
+    logger.info("Preloading FLUX-dev into VRAM (this blocks until ready)...")
+    t0 = time.time()
+    try:
+        # asyncio.to_thread keeps the event loop free for /health probes
+        # while the heavy load runs in a worker thread.
+        await asyncio.to_thread(_handler_module._get_pipe)
+        logger.info("FLUX warm in VRAM after %.1fs", time.time() - t0)
+    except Exception as e:
+        # If FLUX fails to load we still want sshd + /health up so a
+        # human can debug. Log loudly and skip register — backend will
+        # never see green, which is the correct signal.
+        logger.exception("FATAL: FLUX preload failed: %s", e)
+        task = asyncio.create_task(_heartbeat_forever())
+        try:
+            yield
+        finally:
+            task.cancel()
+        return
+
+    # 2. First registration (synchronous).
     async with httpx.AsyncClient() as client:
         ok, info = await _post_register(client)
     logger.info("Initial registration: ok=%s info=%s url=%s", ok, info, PUBLIC_URL)
+
+    # 3. Heartbeat task.
     task = asyncio.create_task(_heartbeat_forever())
     try:
         yield

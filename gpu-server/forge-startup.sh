@@ -39,15 +39,30 @@ if [ -z "${PYTHON_BIN}" ]; then
     exit 1
 fi
 
-if [ ! -x "${VENV_DIR}/bin/python" ]; then
-    echo "[startup] First boot on this volume — creating venv at ${VENV_DIR}"
-    "${PYTHON_BIN}" -m venv "${VENV_DIR}"
-    echo "[startup] Installing pip requirements (~3 min, one-time)"
+# Sentinel file written at the END of a successful install. If absent,
+# the venv is either fresh or aborted mid-install (RunPod's startup
+# timeout silently kills long pip runs). We always nuke + rebuild from
+# scratch in that case — partial venvs caused `runpod`/`diffusers` to
+# be missing for hours of debugging.
+VENV_SENTINEL="${VENV_DIR}/.install-complete"
+
+if [ ! -f "${VENV_SENTINEL}" ]; then
+    echo "[startup] Venv missing or incomplete — wiping and rebuilding"
+    rm -rf "${VENV_DIR}"
+    # --system-site-packages lets the venv see the base image's torch +
+    # CUDA wheels (runpod/pytorch ships them). Without this flag, pip
+    # would re-download torch into the venv (~3 GB, ~10 min) on top of
+    # the other deps and likely hit the worker startup timeout.
+    "${PYTHON_BIN}" -m venv --system-site-packages "${VENV_DIR}"
+    echo "[startup] Installing pip requirements (~2-3 min)"
     "${VENV_DIR}/bin/pip" install --upgrade pip
     "${VENV_DIR}/bin/pip" install --no-cache-dir -r "${APP_DIR}/forge-requirements.txt"
+    # Sanity-check the critical imports before declaring victory.
+    "${VENV_DIR}/bin/python" -c "import runpod, diffusers, transformers, torch; print(f'venv ok: runpod={runpod.__version__} diffusers={diffusers.__version__} torch={torch.__version__}')"
+    touch "${VENV_SENTINEL}"
     echo "[startup] Venv ready"
 else
-    echo "[startup] Reusing existing venv at ${VENV_DIR}"
+    echo "[startup] Reusing complete venv at ${VENV_DIR}"
 fi
 
 # Make sure HF cache env vars point at the volume — the legacy serverless
@@ -58,5 +73,15 @@ export HF_HUB_CACHE="/runpod-volume/models/.hf_cache/hub"
 export TRANSFORMERS_CACHE="/runpod-volume/models/.hf_cache/hub"
 mkdir -p "${HF_HUB_CACHE}"
 
-echo "[startup] Launching FastAPI shim on :${FORGE_SERVE_PORT:-8888}"
-exec "${VENV_DIR}/bin/python" -u "${APP_DIR}/serve.py"
+# FORGE_MODE selects which Python entrypoint to run:
+#   serverless → handler.py, which calls runpod.serverless.start({"handler": ...})
+#                and enters RunPod's queue worker loop (per-request workers)
+#   server     → serve.py, a long-lived FastAPI shim on :8888 for the warm-pod
+#                Connect/Disconnect path (default if env var unset)
+if [ "${FORGE_MODE:-server}" = "serverless" ]; then
+    echo "[startup] Launching RunPod Serverless worker (handler.py)"
+    exec "${VENV_DIR}/bin/python" -u "${APP_DIR}/handler.py"
+else
+    echo "[startup] Launching FastAPI shim on :${FORGE_SERVE_PORT:-8888}"
+    exec "${VENV_DIR}/bin/python" -u "${APP_DIR}/serve.py"
+fi

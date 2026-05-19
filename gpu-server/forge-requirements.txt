@@ -7,7 +7,12 @@
 # We do NOT include CUDA/PyTorch here — those come from the runpod/pytorch
 # base image. We pin the inference + utility libraries on top.
 
+# RunPod SDK — required by handler.py for serverless mode
+# (runpod.serverless.start enters the worker queue loop)
+runpod==1.7.7
+
 # FastAPI shim (serve.py runs uvicorn) + outbound HTTP for self-registration
+# Kept for the previously-built on-demand pod path; harmless in serverless mode
 fastapi==0.115.5
 uvicorn[standard]==0.32.0
 httpx==0.27.2

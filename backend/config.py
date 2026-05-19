@@ -125,7 +125,14 @@ class Settings(BaseSettings):
     FORGE_POD_IDLE_MIN: int = 5
     # How long we wait for a freshly-deployed pod to phone home via
     # /api/internal/gpu-register before declaring the deploy a failure.
-    FORGE_POD_REGISTER_TIMEOUT_SEC: int = 600
+    # First-ever pod boot on a fresh volume runs:
+    #   pip install (~10 min, slow MooseFS writes)
+    #   + FLUX-dev download (~10 min, 24 GB)
+    #   + FLUX load into VRAM (~30 s)
+    # = ~20-25 min before the pod can register. Subsequent connects are
+    # ~1 min (venv + FLUX cached on volume). 30 min cap covers both
+    # safely without leaving stuck pods running forever.
+    FORGE_POD_REGISTER_TIMEOUT_SEC: int = 1800
 
     # Cloudflare R2
     R2_ACCOUNT_ID: str = ""

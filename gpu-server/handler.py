@@ -103,8 +103,23 @@ def _vram_gb() -> float:
     return torch.cuda.memory_allocated() / 1e9
 
 
-# Cold-start once. Module-level so RunPod's worker keeps it warm across jobs.
-PIPE = _load_pipeline()
+# Lazy global. We do NOT load FLUX at module-import time because RunPod
+# Serverless has an undocumented worker-startup timeout (~5-10 min) — if
+# runpod.serverless.start() isn't reached within that window, the worker
+# is marked unhealthy and killed. FLUX-dev download is ~10 min on a cold
+# volume cache, which exceeds the limit.
+#
+# Instead, _get_pipe() loads FLUX on the first handler() invocation. The
+# first request pays ~10 min on cold cache (HF download) or ~30s on
+# warm; subsequent requests reuse the warm PIPE in memory.
+PIPE = None
+
+
+def _get_pipe():
+    global PIPE
+    if PIPE is None:
+        PIPE = _load_pipeline()
+    return PIPE
 
 # Cache of fused LoRAs keyed by URL → weight, so repeated calls with the same
 # LoRA don't re-download. Bounded so we don't grow forever.
@@ -130,7 +145,7 @@ def _get_pulid():
 
         logger.info("Loading PuLID-FLUX (lazy)...")
         _PULID = PuLIDPipeline(
-            pipe=PIPE,
+            pipe=_get_pipe(),
             device=DEVICE,
             weight_dtype=DTYPE,
             cache_dir=str(HF_CACHE_DIR / "hub"),
@@ -190,7 +205,7 @@ def _apply_loras(loras: list[dict]):
 
         # Diffusers' load_lora_weights with adapter_name supports stacking.
         try:
-            PIPE.load_lora_weights(str(local), adapter_name=name)
+            _get_pipe().load_lora_weights(str(local), adapter_name=name)
             adapter_names.append(name)
             weights.append(weight)
             _LORA_CACHE[url] = weight
@@ -198,11 +213,13 @@ def _apply_loras(loras: list[dict]):
             logger.warning("Failed to load LoRA %s: %s", url, e)
 
     if adapter_names:
-        PIPE.set_adapters(adapter_names, adapter_weights=weights)
+        _get_pipe().set_adapters(adapter_names, adapter_weights=weights)
         logger.info("Activated LoRAs: %s with weights %s", adapter_names, weights)
 
 
 def _reset_loras():
+    if PIPE is None:
+        return
     try:
         PIPE.unfuse_lora()
     except Exception:
@@ -261,8 +278,8 @@ def handler(event):
                 generator=generator,
             )
         else:
-            # Vanilla FLUX text-to-image
-            result = PIPE(
+            # Vanilla FLUX text-to-image (lazy-loads on first call)
+            result = _get_pipe()(
                 prompt=prompt,
                 negative_prompt=negative_prompt,
                 width=width,
