@@ -1,0 +1,32 @@
+name: Verify deployment tunnel
+on:
+  push:
+    branches: [codex/secure-tunnel-deployments, codex/senthop-relay-migration]
+    paths: ['.github/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: vps1-operations
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Connect to private VPS
+        uses: ./.github/actions/private-vps
+        with:
+          wireguard-key: ${{ secrets.VPS_CI_WIREGUARD_KEY }}
+          ssh-key: ${{ secrets.VPS_CI_SSH_KEY }}
+
+      - name: Verify deployment access without changing services
+        run: ssh vps 'test "$(id -un)" = claude && docker info --format "Docker available"'
+
+      - name: Close private VPS connection
+        if: always()
+        run: |
+          sudo wg-quick down app-ci 2>/dev/null || true
+          sudo rm -f /etc/wireguard/app-ci.conf
+          rm -f ~/.ssh/deploy_key

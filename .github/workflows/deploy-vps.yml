@@ -11,6 +11,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: vps1-operations
+  cancel-in-progress: false
+
 jobs:
   # ---------------------------------------------------
   # Build Validation
@@ -71,17 +75,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+      - name: Connect to private VPS
+        uses: ./.github/actions/private-vps
+        with:
+          wireguard-key: ${{ secrets.VPS_CI_WIREGUARD_KEY }}
+          ssh-key: ${{ secrets.VPS_CI_SSH_KEY }}
 
       - name: Deploy to VPS
         env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: 10.203.10.1
+          VPS_USER: claude
           MAIELR_API_KEY: ${{ secrets.MAIELR_API_KEY }}
           MAIELR_WEBHOOK_SECRET: ${{ secrets.MAIELR_WEBHOOK_SECRET }}
           GPU_REGISTRATION_KEY: ${{ secrets.GPU_REGISTRATION_KEY }}
@@ -89,7 +92,7 @@ jobs:
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << ENDSSH
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes $VPS_USER@$VPS_HOST << ENDSSH
             set -e
 
             echo "=== Starting deployment ==="
@@ -138,3 +141,10 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Check the logs above for details." >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Close private VPS connection
+        if: always()
+        run: |
+          sudo wg-quick down app-ci 2>/dev/null || true
+          sudo rm -f /etc/wireguard/app-ci.conf
+          rm -f ~/.ssh/deploy_key
