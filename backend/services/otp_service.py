@@ -21,7 +21,7 @@ OTP_TTL = 600  # 10 minutes
 OTP_LENGTH = 6
 MAX_ATTEMPTS = 5
 
-MAIELR_SEND_URL = "https://relay.maielr.com/v1/email/send"
+MAIELR_SEND_URL = "https://relay.senthop.co.uk/v1/email/send"
 
 
 def generate_otp(email: str) -> str:
