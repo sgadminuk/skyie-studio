@@ -1,6 +1,10 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 celery[redis]==5.4.0
+# kombu is pinned because celery 5.4.0 allows any kombu <6. kombu 5.7.0 (3 Nov 2026)
+# imports `packaging` in its Redis transport but only installs it via kombu's own
+# [redis] extra (which also needs redis>=6.4), so a fresh build crashed the worker.
+kombu==5.6.2
 redis==5.2.1
 python-multipart==0.0.20
 websockets==14.1
